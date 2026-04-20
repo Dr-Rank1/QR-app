@@ -1,0 +1,93 @@
+name: qr_vault
+description: "Scan, decode & save QR codes — fast, private, offline."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Camera and QR scanning
+  mobile_scanner: ^5.0.0
+  
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  
+  # Navigation
+  go_router: ^13.2.0
+  
+  # Permissions
+  permission_handler: ^11.3.1
+  
+  # Local storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  shared_preferences: ^2.2.3
+  
+  # Sharing
+  share_plus: ^8.0.3
+  
+  # URL launching
+  url_launcher: ^6.2.6
+  
+  # Utilities
+  path_provider: ^2.1.3
+  uuid: ^4.4.0
+  intl: ^0.19.0
+
+  # Animations
+  animations: ^2.0.11
+  flutter_native_splash: ^2.3.10
+
+  # Monetization
+  purchases_flutter: ^6.20.0
+  google_mobile_ads: ^5.1.0
+  csv: ^6.0.0
+  pdf: ^3.10.0
+  printing: ^5.12.0
+
+  # QR Generation
+  qr_flutter: ^4.0.0
+  pretty_qr_code: ^3.0.0
+  screenshot: ^3.0.0
+  image_gallery_saver: ^2.0.3
+  flutter_colorpicker: ^1.0.0
+
+  # Cloud Sync
+  connectivity_plus: ^6.0.0
+  firebase_core: ^3.0.0
+  cloud_firestore: ^5.0.0
+  firebase_auth: ^5.0.0
+  workmanager: ^0.5.0
+  timeago: ^3.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.0
+  flutter_native_splash: ^2.3.10
+  flutter_launcher_icons: ^0.13.0
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#121212"
+  image: assets/splash_logo.png
+  android_12: true
+  fullscreen: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/app_icon_foreground.png"
+
+flutter:
+  uses-material-design: true

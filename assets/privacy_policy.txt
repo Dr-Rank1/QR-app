@@ -1,0 +1,47 @@
+# QR Vault Privacy Policy
+
+Last Updated: 2024
+
+## Data Collection
+
+QR Vault respects your privacy. Here's what we collect:
+
+### Local Data (Stored Only on Your Device)
+- **Scan History**: QR codes you scan are stored locally using Hive database. This data never leaves your device unless you explicitly export or sync to cloud.
+- **Settings**: Your preferences (theme, sound, vibration) are stored locally.
+- **App Usage**: Anonymous analytics to improve the app.
+
+### Cloud Sync (Optional)
+- If you enable cloud sync, your scan history is uploaded to Firebase Cloud Storage.
+- Data is associated with an anonymous account ID.
+- You can delete your cloud data anytime by clearing app data.
+
+### Camera Access
+- QR Vault requires camera access to scan QR codes.
+- We do not take photos or record video.
+- Camera frames are processed locally and discarded immediately.
+
+## Data Usage
+
+We use collected data to:
+- Provide QR scanning and generation features
+- Save your scan history for reference
+- Enable optional cloud backup
+
+## Data Sharing
+
+We do NOT sell, trade, or share your personal data with third parties.
+
+## Your Rights
+
+- **Delete Data**: Clear all local data from Settings > About > Clear History
+- **Disable Cloud Sync**: Turn off sync in Settings
+- **Withdraw Consent**: Uninstall the app removes all local data
+
+## Contact
+
+For privacy concerns, contact: privacy@example.com
+
+## Children's Privacy
+
+QR Vault is not intended for children under 13. We do not knowingly collect data from children.
