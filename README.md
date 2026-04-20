@@ -143,4 +143,4 @@ Note: iOS release builds require Apple Developer membership and proper code sign
 
 ## License
 
-MIT License
+MIT License# QR-app
