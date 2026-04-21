@@ -8,7 +8,6 @@ import '../features/scanner/presentation/screens/result_detail_screen.dart';
 import '../features/history/presentation/screens/enhanced_history_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
-import '../features/monetization/presentation/screens/paywall_screen.dart';
 import 'main_shell.dart';
 
 class AppRoutes {
@@ -17,7 +16,6 @@ class AppRoutes {
   static const history = '/history';
   static const settings = '/settings';
   static const resultDetail = '/result/:id';
-  static const paywall = '/paywall';
 
   static String resultDetailPath(String id) => '/result/$id';
 }
@@ -93,26 +91,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               animation: animation,
               secondaryAnimation: secondaryAnimation,
               transitionType: SharedAxisTransitionType.horizontal,
-              child: child,
-            );
-          },
-        ),
-      ),
-
-      // Paywall
-      GoRoute(
-        path: AppRoutes.paywall,
-        name: 'paywall',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: PaywallScreen(
-            onDismiss: () => context.pop(),
-          ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.vertical,
               child: child,
             );
           },

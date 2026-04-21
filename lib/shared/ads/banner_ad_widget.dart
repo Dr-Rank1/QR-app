@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-import '../../features/monetization/presentation/providers/purchases_provider.dart';
+import '../../features/settings/presentation/providers/settings_provider.dart';
 
 class BannerAdWidget extends ConsumerStatefulWidget {
   const BannerAdWidget({super.key});
@@ -36,7 +36,7 @@ class BannerAdWidgetState extends ConsumerState<BannerAdWidget> {
           if (mounted) setState(() => _isAdLoaded = true);
         },
         onAdFailedToLoad: (ad, error) {
-          debugPrint('Banner ad failed to load: ${error.name}');
+          debugPrint('Banner ad failed to load: ${error.code} - ${error.message}');
           ad.dispose();
         },
       ),

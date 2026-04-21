@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-import '../features/monetization/presentation/providers/purchases_provider.dart';
-
 class InterstitialAdManager {
   static final InterstitialAdManager _instance = InterstitialAdManager._internal();
   factory InterstitialAdManager() => _instance;
@@ -26,9 +24,8 @@ class InterstitialAdManager {
           _interstitialAd = ad;
           _isAdLoaded = true;
         },
-        onAdFailedToLoad: (ad, error) {
-          debugPrint('Interstitial ad failed to load: ${error.name}');
-          ad.dispose();
+        onAdFailedToLoad: (LoadAdError error) {
+          debugPrint('Interstitial ad failed to load: ${error.code} - ${error.message}');
         },
       ),
     );
@@ -46,8 +43,7 @@ class InterstitialAdManager {
           _loadInterstitialAd();
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
-          debugPrint('Interstitial ad failed to show: ${error.name}');
-          ad.dispose();
+          debugPrint('Interstitial ad failed to show: ${error.code} - ${error.message}');
           _loadInterstitialAd();
         },
       );
@@ -59,7 +55,8 @@ class InterstitialAdManager {
   }
 
   bool _checkPremium() {
-    // This is a simplified check - in production use proper Riverpod
+    // Simplified check - always returns false (non-premium) for now
+    // In production, integrate with Riverpod's isPremiumProvider
     return false;
   }
 

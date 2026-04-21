@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-import 'enums/qr_result_type.dart';
+import '../enums/qr_result_type.dart';
 
 part 'qr_result.g.dart';
 
