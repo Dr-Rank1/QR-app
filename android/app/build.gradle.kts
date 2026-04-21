@@ -1,18 +1,19 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
 }
 
 // Load keystore properties
-val keystoreProperties = java.util.Properties()
+val keystoreProperties = Properties()
 file("../key.properties").inputStream().use { keystoreProperties.load(it) }
 
 android {
-    namespace = "com.yourname.qrvault"
+    namespace = "com.dr_rank.qrcodescanner"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -24,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.yourname.qrvault"
+        applicationId = "com.dr_rank.qrcodescanner"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -56,9 +57,4 @@ android {
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
-    implementation("com.google.firebase:firebase-analytics")
 }

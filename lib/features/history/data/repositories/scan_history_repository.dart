@@ -1,6 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
-import '../../domain/models/qr_result.dart';
+import '../../../scanner/domain/models/qr_result.dart';
 
 class ScanHistoryRepository {
   static const String _boxName = 'scan_history';

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../scanner/presentation/screens/scanner_screen.dart';
-import '../../generator/presentation/screens/generator_screen.dart';
-import '../../history/presentation/screens/enhanced_history_screen.dart';
+import '../features/scanner/presentation/screens/scanner_screen.dart';
+import '../features/generator/presentation/screens/generator_screen.dart';
+import '../features/history/presentation/screens/enhanced_history_screen.dart';
 
 final _selectedIndexProvider = StateProvider<int>((ref) => 0);
 

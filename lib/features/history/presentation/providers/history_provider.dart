@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/scan_history_repository.dart';
-import '../../domain/models/qr_result.dart';
+import '../../../scanner/domain/models/qr_result.dart';
 
 final scanHistoryRepositoryProvider = Provider<ScanHistoryRepository>((ref) {
   return ScanHistoryRepository();

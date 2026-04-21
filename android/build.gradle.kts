@@ -3,15 +3,35 @@ buildscript {
         google()
         mavenCentral()
     }
-    dependencies {
-        classpath("com.google.gms:google-services:4.4.2")
-    }
 }
 
 allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+}
+
+// Force consistent versions of Google Play services libraries
+configurations.all {
+    resolutionStrategy {
+        force("com.google.android.gms:play-services-measurement-api:22.0.2")
+        force("com.google.android.gms:play-services-measurement-sdk:22.0.2")
+    }
+}
+
+// Fix for plugins without namespace
+subprojects {
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            val android = project.extensions.findByName("android")
+            if (android != null) {
+                val androidExt = android as com.android.build.gradle.BaseExtension
+                if (androidExt.namespace.isNullOrEmpty()) {
+                    androidExt.namespace = project.group.toString()
+                }
+            }
+        }
     }
 }
 

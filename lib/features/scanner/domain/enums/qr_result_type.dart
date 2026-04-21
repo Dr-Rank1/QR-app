@@ -4,7 +4,6 @@ enum QRResultType {
   email,
   wifi,
   text,
-  generated,
 }
 
 extension QRResultTypeExtension on QRResultType {
@@ -20,8 +19,6 @@ extension QRResultTypeExtension on QRResultType {
         return 'Wi-Fi';
       case QRResultType.text:
         return 'Text';
-      case QRResultType.generated:
-        return 'Generated';
     }
   }
 

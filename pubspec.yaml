@@ -15,7 +15,6 @@ dependencies:
   
   # State management
   flutter_riverpod: ^2.5.1
-  riverpod_annotation: ^2.3.5
   
   # Navigation
   go_router: ^13.2.0
@@ -43,27 +42,10 @@ dependencies:
   animations: ^2.0.11
   flutter_native_splash: ^2.3.10
 
-  # Monetization
-  purchases_flutter: ^6.20.0
-  google_mobile_ads: ^5.1.0
-  csv: ^6.0.0
-  pdf: ^3.10.0
-  printing: ^5.12.0
-
   # QR Generation
-  qr_flutter: ^4.0.0
-  pretty_qr_code: ^3.0.0
+  qr_flutter: ^4.1.0
   screenshot: ^3.0.0
-  image_gallery_saver: ^2.0.3
   flutter_colorpicker: ^1.0.0
-
-  # Cloud Sync
-  connectivity_plus: ^6.0.0
-  firebase_core: ^3.0.0
-  cloud_firestore: ^5.0.0
-  firebase_auth: ^5.0.0
-  workmanager: ^0.5.0
-  timeago: ^3.6.0
 
 dev_dependencies:
   flutter_test:
@@ -71,9 +53,6 @@ dev_dependencies:
   flutter_lints: ^3.0.2
   hive_generator: ^2.0.1
   build_runner: ^2.4.9
-  riverpod_generator: ^2.4.0
-  flutter_native_splash: ^2.3.10
-  flutter_launcher_icons: ^0.13.0
 
 flutter_native_splash:
   color: "#FFFFFF"
