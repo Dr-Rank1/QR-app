@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:animations/animations.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../features/scanner/presentation/screens/result_detail_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
+import '../shared/services/onboarding_storage.dart';
 import 'main_shell.dart';
 
 class AppRoutes {
@@ -18,6 +18,40 @@ class AppRoutes {
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+Page<void> _fadePage({
+  required LocalKey key,
+  required Widget child,
+}) {
+  return CustomTransitionPage(
+    key: key,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+  );
+}
+
+Page<void> _slideUpPage({
+  required LocalKey key,
+  required Widget child,
+}) {
+  return CustomTransitionPage(
+    key: key,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final offsetAnimation = Tween<Offset>(
+        begin: const Offset(0, 0.08),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+
+      return SlideTransition(
+        position: offsetAnimation,
+        child: FadeTransition(opacity: animation, child: child),
+      );
+    },
+  );
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -26,31 +60,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.onboarding,
         name: 'onboarding',
-        pageBuilder: (context, state) => CustomTransitionPage(
+        pageBuilder: (context, state) => _fadePage(
           key: state.pageKey,
           child: const OnboardingScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeThroughTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              child: child,
-            );
-          },
         ),
       ),
       GoRoute(
         path: AppRoutes.scanner,
         name: 'scanner',
-        pageBuilder: (context, state) => CustomTransitionPage(
+        pageBuilder: (context, state) => _fadePage(
           key: state.pageKey,
           child: const MainShell(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeThroughTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              child: child,
-            );
-          },
         ),
       ),
       GoRoute(
@@ -58,24 +78,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'resultDetail',
         pageBuilder: (context, state) {
           final id = state.pathParameters['id']!;
-          return CustomTransitionPage(
+          return _slideUpPage(
             key: state.pageKey,
             child: ResultDetailScreen(scanId: id),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SharedAxisTransition(
-                animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                transitionType: SharedAxisTransitionType.vertical,
-                child: child,
-              );
-            },
           );
         },
       ),
     ],
-    redirect: (context, state) async {
-      final prefs = await SharedPreferences.getInstance();
-      final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+    redirect: (context, state) {
+      final onboardingCompleted = OnboardingStorage(Hive.box('settings')).isCompleted;
 
       if (onboardingCompleted && state.matchedLocation == AppRoutes.onboarding) {
         return AppRoutes.scanner;

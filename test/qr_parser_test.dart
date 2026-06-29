@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_vault/features/generator/domain/qr_payload_builder.dart';
 import 'package:qr_vault/features/scanner/domain/enums/qr_result_type.dart';
 import 'package:qr_vault/shared/utils/qr_parser.dart';
 import 'package:qr_vault/shared/utils/url_safety.dart';
@@ -52,6 +53,60 @@ void main() {
     test('flags suspicious shorteners', () {
       expect(UrlSafety.looksSuspicious('https://bit.ly/abc'), isTrue);
       expect(UrlSafety.looksSuspicious('https://example.com'), isFalse);
+    });
+  });
+
+  group('QRPayloadBuilder', () {
+    test('builds wifi payload', () {
+      final payload = QRPayloadBuilder.build(
+        GeneratorContentType.wifi,
+        {
+          'ssid': 'Cafe WiFi',
+          'password': 'secret',
+          'encryption': 'WPA',
+          'hidden': 'false',
+        },
+      );
+      expect(payload, contains('S:Cafe WiFi'));
+      expect(payload, contains('P:secret'));
+    });
+
+    test('builds contact vcard', () {
+      final payload = QRPayloadBuilder.build(
+        GeneratorContentType.contact,
+        {
+          'name': 'Jane Doe',
+          'phone': '+1234567890',
+          'email': 'jane@example.com',
+          'organization': 'Acme',
+        },
+      );
+      expect(payload, contains('FN:Jane Doe'));
+      expect(payload, contains('END:VCARD'));
+    });
+
+    test('validates URLs', () {
+      expect(
+        QRPayloadBuilder.fieldErrors(
+          GeneratorContentType.url,
+          {'url': 'not a url'},
+        )['url'],
+        isNotNull,
+      );
+      expect(
+        QRPayloadBuilder.fieldErrors(
+          GeneratorContentType.url,
+          {'url': 'https://example.com'},
+        )['url'],
+        isNull,
+      );
+      expect(
+        QRPayloadBuilder.isValid(
+          GeneratorContentType.url,
+          {'url': 'bad url'},
+        ),
+        isFalse,
+      );
     });
   });
 }

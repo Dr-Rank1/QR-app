@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../features/scanner/domain/enums/qr_result_type.dart';
 import 'url_safety.dart';
+import '../security/payload_sanitizer.dart';
 
 class QRContentParser {
   static ({QRResultType type, String value, Map<String, String>? metadata}) parse(
@@ -182,13 +183,16 @@ class QRContentParser {
   }) async {
     switch (type) {
       case QRResultType.url:
+        final sanitized = PayloadSanitizer.sanitizeUrl(value);
+        if (sanitized.isBlocked) return false;
         if (context != null) {
-          final confirmed = await UrlSafety.confirmOpen(context, value);
+          final confirmed = await UrlSafety.confirmOpen(context, sanitized.value);
           if (!confirmed) return false;
         }
-        var url = value;
-        if (!url.startsWith('http')) url = 'https://$url';
-        return launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        return launchUrl(
+          Uri.parse(sanitized.value),
+          mode: LaunchMode.externalApplication,
+        );
 
       case QRResultType.phone:
         final phone = value.replaceAll(RegExp(r'[^\d+]'), '');

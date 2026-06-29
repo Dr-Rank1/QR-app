@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../app/app_spacing.dart';
 import '../../../../app/router.dart';
-import '../../../../app/navigation_provider.dart';
-import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/utils/app_haptics.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
+import '../../../../shared/widgets/app_icons.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
+import '../../../../shared/widgets/theme_mode_toggle.dart';
 import '../../../scanner/domain/enums/qr_result_type.dart';
 import '../../../scanner/domain/models/qr_result.dart';
 import '../providers/history_provider.dart';
@@ -22,7 +25,6 @@ class EnhancedHistoryScreen extends ConsumerStatefulWidget {
 class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
   final _searchController = TextEditingController();
   String _query = '';
-  HistoryFilter _filter = HistoryFilter.all;
 
   @override
   void dispose() {
@@ -31,6 +33,14 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
   }
 
   Future<void> _exportHistory() async {
+    final scans = ref.read(scanHistoryProvider).valueOrNull ?? [];
+    if (scans.isEmpty) {
+      if (mounted) {
+        AppSnackBar.showInfo(context, 'Nothing to export');
+      }
+      return;
+    }
+
     final json = await ref.read(scanHistoryProvider.notifier).exportAsJson();
     await SharePlus.instance.share(
       ShareParams(text: json, subject: 'QR Vault Export'),
@@ -44,31 +54,66 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan History'),
+        title: const Text('History'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.upload_outlined),
-            tooltip: 'Export',
-            onPressed: _exportHistory,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_sweep),
-            onPressed: () => _showClearDialog(context, ref),
+          const ThemeModeToggle(),
+          PopupMenuButton<_HistoryMenuAction>(
+            tooltip: 'More',
+            onSelected: (action) {
+              switch (action) {
+                case _HistoryMenuAction.export:
+                  _exportHistory();
+                case _HistoryMenuAction.clearAll:
+                  _showClearConfirmation(context, ref);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: _HistoryMenuAction.export,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(AppIcons.export, size: 22),
+                  title: Text('Export'),
+                ),
+              ),
+              PopupMenuItem(
+                value: _HistoryMenuAction.clearAll,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    AppIcons.delete,
+                    size: 22,
+                    color: colorScheme.error,
+                  ),
+                  title: Text(
+                    'Clear all',
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenHorizontal,
+              8,
+              AppSpacing.screenHorizontal,
+              4,
+            ),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search scans...',
-                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search vault…',
+                isDense: true,
+                prefixIcon: const Icon(AppIcons.search, size: 20),
                 suffixIcon: _query.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: const Icon(AppIcons.close, size: 18),
+                        tooltip: 'Clear',
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _query = '');
@@ -79,22 +124,6 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
               onChanged: (value) => setState(() => _query = value),
             ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: HistoryFilter.values.map((filter) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(_filterLabel(filter)),
-                    selected: _filter == filter,
-                    onSelected: (_) => setState(() => _filter = filter),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
           Expanded(
             child: historyAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -102,10 +131,18 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 64, color: colorScheme.error),
+                    Icon(
+                      Icons.error_outline,
+                      size: 40,
+                      color: colorScheme.error.withValues(alpha: 0.8),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Could not load history',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
                     const SizedBox(height: 16),
-                    const Text('Error loading history'),
-                    FilledButton(
+                    TextButton(
                       onPressed: () => ref.invalidate(scanHistoryProvider),
                       child: const Text('Retry'),
                     ),
@@ -113,106 +150,42 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
                 ),
               ),
               data: (scans) {
-                final filtered = filterScans(scans, query: _query, filter: _filter);
+                final filtered = filterScans(
+                  scans,
+                  query: _query,
+                  filter: HistoryFilter.all,
+                );
 
                 if (filtered.isEmpty) {
-                  return EmptyStateWidget(
-                    icon: Icons.qr_code_scanner,
-                    title: scans.isEmpty ? 'No Scans Yet' : 'No Results',
-                    subtitle: scans.isEmpty
-                        ? 'QR codes you scan will appear here.'
-                        : 'Try a different search or filter.',
-                    action: scans.isEmpty
-                        ? FilledButton.icon(
-                            onPressed: () =>
-                                ref.read(selectedTabIndexProvider.notifier).state = 0,
-                            icon: const Icon(Icons.qr_code_scanner),
-                            label: const Text('Start Scanning'),
-                          )
-                        : null,
+                  return _VaultEmptyState(
+                    isSearching: scans.isNotEmpty && _query.isNotEmpty,
                   );
                 }
 
-                final recentScans = filtered.take(3).toList();
-
                 return RefreshIndicator(
                   onRefresh: () async => ref.invalidate(scanHistoryProvider),
-                  child: CustomScrollView(
-                    slivers: [
-                      if (recentScans.isNotEmpty && _query.isEmpty && _filter == HistoryFilter.all) ...[
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                            child: Text(
-                              'Recently Scanned',
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ),
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenHorizontal,
+                      8,
+                      AppSpacing.screenHorizontal,
+                      24,
+                    ),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final scan = filtered[index];
+                      return _VaultHistoryTile(
+                        scan: scan,
+                        onTap: () => context.push(
+                          AppRoutes.resultDetailPath(scan.id),
                         ),
-                        SliverToBoxAdapter(
-                          child: SizedBox(
-                            height: 80,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: recentScans.length,
-                              itemBuilder: (context, index) {
-                                final scan = recentScans[index];
-                                return _RecentScanChip(
-                                  typeColor: scan.type.color,
-                                  icon: scan.type.icon,
-                                  label: scan.formattedValue.length > 15
-                                      ? '${scan.formattedValue.substring(0, 15)}...'
-                                      : scan.formattedValue,
-                                  onTap: () => context.push(
-                                    AppRoutes.resultDetailPath(scan.id),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                          child: Text(
-                            'All Scans (${filtered.length})',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ),
-                      ),
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final scan = filtered[index];
-                              return _HistoryListTile(
-                                scan: scan,
-                                onTap: () => context.push(
-                                  AppRoutes.resultDetailPath(scan.id),
-                                ),
-                                onDelete: () => ref
-                                    .read(scanHistoryProvider.notifier)
-                                    .deleteScan(scan.id),
-                                onFavorite: () => ref
-                                    .read(scanHistoryProvider.notifier)
-                                    .toggleFavorite(scan.id),
-                              );
-                            },
-                            childCount: filtered.length,
-                          ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                    ],
+                        onDelete: () => ref
+                            .read(scanHistoryProvider.notifier)
+                            .deleteScan(scan.id),
+                      );
+                    },
                   ),
                 );
               },
@@ -223,82 +196,184 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
     );
   }
 
-  String _filterLabel(HistoryFilter filter) {
-    switch (filter) {
-      case HistoryFilter.all:
-        return 'All';
-      case HistoryFilter.favorites:
-        return 'Favorites';
-      case HistoryFilter.url:
-        return 'URLs';
-      case HistoryFilter.wifi:
-        return 'Wi-Fi';
-      case HistoryFilter.contact:
-        return 'Contacts';
-    }
-  }
+  Future<void> _showClearConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final colorScheme = Theme.of(context).colorScheme;
 
-  Future<void> _showClearDialog(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear All History'),
-        content: const Text(
-          'Are you sure you want to delete all scan history? This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenHorizontal,
+              0,
+              AppSpacing.screenHorizontal,
+              16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Clear vault?',
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'All saved scans will be permanently removed from this device.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.error,
+                    foregroundColor: colorScheme.onError,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  onPressed: () => Navigator.of(sheetContext).pop(true),
+                  child: const Text('Clear all'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            ),
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear All'),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
     if (confirmed == true) {
       await ref.read(scanHistoryProvider.notifier).clearAll();
+      if (mounted) {
+        AppSnackBar.showSuccess(context, 'Vault cleared');
+      }
     }
   }
 }
 
-class _RecentScanChip extends StatelessWidget {
-  final Color typeColor;
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
+enum _HistoryMenuAction { export, clearAll }
 
-  const _RecentScanChip({
-    required this.typeColor,
-    required this.icon,
-    required this.label,
+class _VaultEmptyState extends StatelessWidget {
+  final bool isSearching;
+
+  const _VaultEmptyState({required this.isSearching});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final muted = colorScheme.onSurfaceVariant.withValues(alpha: 0.45);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSearching ? Icons.search_off_rounded : Icons.inventory_2_outlined,
+              size: 44,
+              color: muted,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isSearching ? 'No matches' : 'Vault is empty',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface.withValues(alpha: 0.85),
+                  ),
+            ),
+            if (!isSearching) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Scanned codes will appear here',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: muted,
+                      height: 1.4,
+                    ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VaultHistoryTile extends StatelessWidget {
+  final QRResult scan;
+  final VoidCallback onTap;
+  final Future<void> Function() onDelete;
+
+  const _VaultHistoryTile({
+    required this.scan,
     required this.onTap,
+    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Dismissible(
+      key: ValueKey(scan.id),
+      direction: DismissDirection.horizontal,
+      background: _DismissBackground(
+        alignment: Alignment.centerLeft,
+        color: colorScheme.error,
+        iconColor: colorScheme.onError,
+      ),
+      secondaryBackground: _DismissBackground(
+        alignment: Alignment.centerRight,
+        color: colorScheme.error,
+        iconColor: colorScheme.onError,
+      ),
+      confirmDismiss: (_) async {
+        await AppHaptics.light();
+        await onDelete();
+        return true;
+      },
       child: Material(
-        color: typeColor.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: typeColor, size: 20),
-                const SizedBox(width: 8),
+                Icon(
+                  scan.type.icon,
+                  size: 20,
+                  color: scan.type.color.withValues(alpha: 0.75),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    _displayTitle(scan),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: typeColor,
+                  _relativeDate(scan.scannedAt),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                 ),
@@ -309,84 +384,64 @@ class _RecentScanChip extends StatelessWidget {
       ),
     );
   }
+
+  static String _displayTitle(QRResult scan) {
+    var title = scan.formattedValue.trim();
+
+    if (scan.type == QRResultType.url) {
+      title = title
+          .replaceFirst(RegExp(r'^https?://', caseSensitive: false), '')
+          .replaceFirst(RegExp(r'^www\.', caseSensitive: false), '');
+      final slash = title.indexOf('/');
+      if (slash > 0) title = title.substring(0, slash);
+    }
+
+    if (scan.type == QRResultType.wifi) {
+      title = scan.metadata?['ssid'] ?? 'Wi-Fi network';
+    }
+
+    if (title.length > 64) {
+      return '${title.substring(0, 64)}…';
+    }
+    return title;
+  }
+
+  static String _relativeDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final scannedDay = DateTime(date.year, date.month, date.day);
+    final days = today.difference(scannedDay).inDays;
+
+    if (days == 0) return 'Today';
+    if (days == 1) return 'Yesterday';
+    if (days < 7) return '$days days ago';
+    if (days < 30) return '${days ~/ 7} wk ago';
+    if (days < 365) return '${days ~/ 30} mo ago';
+    return '${days ~/ 365} yr ago';
+  }
 }
 
-class _HistoryListTile extends StatelessWidget {
-  final QRResult scan;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-  final VoidCallback onFavorite;
+class _DismissBackground extends StatelessWidget {
+  final Alignment alignment;
+  final Color color;
+  final Color iconColor;
 
-  const _HistoryListTile({
-    required this.scan,
-    required this.onTap,
-    required this.onDelete,
-    required this.onFavorite,
+  const _DismissBackground({
+    required this.alignment,
+    required this.color,
+    required this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Dismissible(
-      key: ValueKey(scan.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        color: colorScheme.error,
-        child: Icon(Icons.delete, color: colorScheme.onError),
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
       ),
-      confirmDismiss: (_) async {
-        onDelete();
-        return false;
-      },
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          leading: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: scan.type.color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(scan.type.icon, color: scan.type.color),
-          ),
-          title: Text(
-            scan.formattedValue,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text('${scan.type.displayName} • ${_formatDate(scan.scannedAt)}'),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(
-                  scan.isFavorite ? Icons.star : Icons.star_border,
-                  color: scan.isFavorite ? Colors.amber : null,
-                ),
-                onPressed: onFavorite,
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: onDelete,
-              ),
-            ],
-          ),
-          onTap: onTap,
-        ),
-      ),
+      child: Icon(AppIcons.delete, color: iconColor, size: 22),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${date.day}/${date.month}/${date.year}';
   }
 }

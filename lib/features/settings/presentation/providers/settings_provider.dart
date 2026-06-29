@@ -3,29 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class SettingsState {
-  final bool darkMode;
   final bool vibrateOnScan;
   final bool soundOnScan;
   final bool keepScreenOn;
   final ThemeMode themeMode;
 
   const SettingsState({
-    this.darkMode = false,
     this.vibrateOnScan = true,
     this.soundOnScan = true,
     this.keepScreenOn = true,
     this.themeMode = ThemeMode.system,
   });
 
+  bool get isDarkMode => themeMode == ThemeMode.dark;
+
   SettingsState copyWith({
-    bool? darkMode,
     bool? vibrateOnScan,
     bool? soundOnScan,
     bool? keepScreenOn,
     ThemeMode? themeMode,
   }) {
     return SettingsState(
-      darkMode: darkMode ?? this.darkMode,
       vibrateOnScan: vibrateOnScan ?? this.vibrateOnScan,
       soundOnScan: soundOnScan ?? this.soundOnScan,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
@@ -37,20 +35,39 @@ class SettingsState {
 class SettingsStateNotifier extends StateNotifier<SettingsState> {
   final Box _box;
 
-  SettingsStateNotifier(this._box)
-      : super(SettingsState(
-          darkMode: _box.get('darkMode', defaultValue: false),
-          vibrateOnScan: _box.get('vibrateOnScan', defaultValue: true),
-          soundOnScan: _box.get('soundOnScan', defaultValue: true),
-          keepScreenOn: _box.get('keepScreenOn', defaultValue: true),
-          themeMode: ThemeMode.values[_box.get('themeMode', defaultValue: 0)],
-        ));
+  SettingsStateNotifier(this._box) : super(_loadInitial(_box));
 
-  void setDarkMode(bool value) {
-    _box.put('darkMode', value);
-    state = state.copyWith(
-      darkMode: value,
-      themeMode: value ? ThemeMode.dark : ThemeMode.light,
+  static SettingsState _loadInitial(Box box) {
+    final themeModeIndex = box.get('themeMode') as int?;
+    ThemeMode themeMode;
+    if (themeModeIndex != null &&
+        themeModeIndex >= 0 &&
+        themeModeIndex < ThemeMode.values.length) {
+      themeMode = ThemeMode.values[themeModeIndex];
+    } else {
+      final legacyDark = box.get('darkMode', defaultValue: false) as bool;
+      themeMode = legacyDark ? ThemeMode.dark : ThemeMode.system;
+    }
+
+    return SettingsState(
+      vibrateOnScan: box.get('vibrateOnScan', defaultValue: true),
+      soundOnScan: box.get('soundOnScan', defaultValue: true),
+      keepScreenOn: box.get('keepScreenOn', defaultValue: true),
+      themeMode: themeMode,
+    );
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    _box.put('themeMode', mode.index);
+    _box.put('darkMode', mode == ThemeMode.dark);
+    state = state.copyWith(themeMode: mode);
+  }
+
+  void toggleLightDark(Brightness currentBrightness) {
+    setThemeMode(
+      currentBrightness == Brightness.dark
+          ? ThemeMode.light
+          : ThemeMode.dark,
     );
   }
 
@@ -68,11 +85,6 @@ class SettingsStateNotifier extends StateNotifier<SettingsState> {
     _box.put('keepScreenOn', value);
     state = state.copyWith(keepScreenOn: value);
   }
-
-  void setThemeMode(ThemeMode mode) {
-    _box.put('themeMode', mode.index);
-    state = state.copyWith(themeMode: mode);
-  }
 }
 
 final settingsBoxProvider = Provider<Box>((ref) {
@@ -87,8 +99,4 @@ final settingsProvider =
 
 final themeModeProvider = Provider<ThemeMode>((ref) {
   return ref.watch(settingsProvider).themeMode;
-});
-
-final isPremiumProvider = Provider<bool>((ref) {
-  return false; // TODO: integrate with actual IAP
 });

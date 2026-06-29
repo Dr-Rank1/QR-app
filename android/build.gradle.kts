@@ -12,15 +12,6 @@ allprojects {
     }
 }
 
-// Force consistent versions of Google Play services libraries
-configurations.all {
-    resolutionStrategy {
-        force("com.google.android.gms:play-services-measurement-api:22.0.2")
-        force("com.google.android.gms:play-services-measurement-sdk:22.0.2")
-    }
-}
-
-// Fix for plugins without namespace
 subprojects {
     afterEvaluate {
         if (project.hasProperty("android")) {
@@ -30,7 +21,16 @@ subprojects {
                 if (androidExt.namespace.isNullOrEmpty()) {
                     androidExt.namespace = project.group.toString()
                 }
+                androidExt.compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
             }
+        }
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            compilerOptions.jvmTarget.set(
+                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17,
+            )
         }
     }
 }

@@ -1,57 +1,41 @@
-# QR Vault - ProGuard Rules
+# QR Vault - ProGuard / R8 rules (release)
 
-# Keep Hive adapters
--keep class com.yourname.qrvault.** { *; }
--keep class * extends com.hive.TypeAdapter { *; }
--keep class * implements com.hive.TypeAdapter { *; }
+-allowaccessmodification
+-repackageclasses 'qrvault'
+-optimizationpasses 5
 
-# Keep ML Kit classes
+# Flutter
+-keep class io.flutter.app.** { *; }
+-keep class io.flutter.plugin.** { *; }
+-keep class io.flutter.embedding.** { *; }
+-keep class io.flutter.** { *; }
+-dontwarn io.flutter.**
+
+# Hive
+-keep class * extends hive.TypeAdapter { *; }
+-keep @hive.HiveType class * { *; }
+-keepclassmembers class * {
+  @hive.HiveField <fields>;
+}
+-keep class com.dr_rank.qrcodescanner.** { *; }
+
+# Mobile scanner / ML Kit
+-keep class dev.steenbakker.mobile_scanner.** { *; }
 -keep class com.google.mlkit.** { *; }
 -dontwarn com.google.mlkit.**
 
-# Keep mobile_scanner classes
--keep class io.lucaseal.** { *; }
--keep class dev.gitlab.** { *; }
--dontwarn io.lucaseal.**
-
-# Keep RevenueCat (if using)
--keep class com.revenuecat.** { *; }
--dontwarn com.revenuecat.**
-
-# Keep Firebase classes
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**
--dontwarn com.google.android.gms.**
-
-# Keep barcode scanning
--keep class com.google.mlkit.vision.** { *; }
--keep class com.google.android.gms.** { *; }
-
-# Keep Google Mobile Ads
--keep class com.google.android.gms.ads.** { *; }
--keep class com.google.ads.** { *; }
-
-# Keep Google Play Core classes (for deferred components)
+# Play Core (deferred components)
 -keep class com.google.android.play.core.** { *; }
 -dontwarn com.google.android.play.core.**
 
-# Keep Flutter
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
--keep class io.flutter.** { *; }
-
-# Keep dart:core
--keep class dart.** { *; }
-
-# Keep serialization
+# Gson (transitive)
 -keepclassmembers class * {
   @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# Obfuscation settings
--allowaccessmodification
--dontpreverify
--repackageclasses ''
+# Strip logging in release
+-assumenosideeffects class android.util.Log {
+  public static *** d(...);
+  public static *** v(...);
+  public static *** i(...);
+}

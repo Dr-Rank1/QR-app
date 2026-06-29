@@ -7,6 +7,7 @@ import '../../domain/enums/qr_result_type.dart';
 import '../../../history/data/repositories/scan_history_repository.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
+import '../../../../shared/security/payload_sanitizer.dart';
 import '../../../../shared/utils/qr_parser.dart';
 import '../../../../shared/utils/scan_feedback.dart';
 
@@ -84,9 +85,17 @@ class ScannerStateNotifier extends StateNotifier<ScannerState> {
     state = state.copyWith(isTorchOn: !state.isTorchOn);
   }
 
+  void setTorchOn(bool value) {
+    state = state.copyWith(isTorchOn: value);
+  }
+
+  void setCameraFacing(CameraFacing facing) {
+    state = state.copyWith(cameraFacing: facing);
+  }
+
   void switchCamera() {
-    state = state.copyWith(
-      cameraFacing: state.cameraFacing == CameraFacing.back
+    setCameraFacing(
+      state.cameraFacing == CameraFacing.back
           ? CameraFacing.front
           : CameraFacing.back,
     );
@@ -97,14 +106,26 @@ class ScannerStateNotifier extends StateNotifier<ScannerState> {
 
     state = state.copyWith(status: ScannerStatus.processing);
 
-    final parsed = QRContentParser.parse(rawValue);
+    final sanitized = PayloadSanitizer.sanitizeRaw(rawValue);
+    if (!sanitized.isAllowed) {
+      state = state.copyWith(
+        status: ScannerStatus.ready,
+        errorMessage: sanitized.blockReason ?? 'Blocked unsafe payload',
+      );
+      return null;
+    }
+
+    final parsed = QRContentParser.parse(sanitized.value);
+    final safeMetadata = parsed.metadata == null
+        ? null
+        : PayloadSanitizer.sanitizeMetadata(parsed.metadata!);
 
     final result = QRResult(
       id: _uuid.v4(),
       rawValue: parsed.value,
       typeIndex: parsed.type.index,
       scannedAt: DateTime.now(),
-      metadata: parsed.metadata,
+      metadata: safeMetadata,
     );
 
     String? displayValue;

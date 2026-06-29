@@ -58,6 +58,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            ndk {
+                // Avoids Windows strip failures when cmdline-tools/apkanalyzer is unavailable.
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
     }
 }

@@ -39,6 +39,7 @@ build/
 
 ### Android ###
 android/local.properties
+android/.gradle/
 
 ### Mac OS ###
 .DS_Store
@@ -46,3 +47,15 @@ android/local.properties
 ### Android Keystore ###
 key.properties
 *.jks
+android/signing-credentials.local.txt
+
+### Local build artifacts & analysis dumps ###
+*.apk
+*.aab
+*.apks
+aab_extract/
+apk*_extract/
+apk_unzip/
+tools/
+assets/icon-options/
+qr_vault_app_icon.png

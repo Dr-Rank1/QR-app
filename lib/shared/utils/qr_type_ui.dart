@@ -29,23 +29,23 @@ extension QRResultTypeUI on QRResultType {
   IconData get icon {
     switch (this) {
       case QRResultType.url:
-        return Icons.link;
+        return Icons.public_outlined;
       case QRResultType.phone:
-        return Icons.phone;
+        return Icons.phone_outlined;
       case QRResultType.email:
-        return Icons.email;
+        return Icons.email_outlined;
       case QRResultType.wifi:
-        return Icons.wifi;
+        return Icons.lock_outlined;
       case QRResultType.text:
-        return Icons.text_fields;
+        return Icons.text_fields_outlined;
       case QRResultType.sms:
-        return Icons.sms;
+        return Icons.sms_outlined;
       case QRResultType.geo:
-        return Icons.location_on;
+        return Icons.location_on_outlined;
       case QRResultType.vcard:
-        return Icons.contact_page;
+        return Icons.contact_page_outlined;
       case QRResultType.calendar:
-        return Icons.event;
+        return Icons.event_outlined;
     }
   }
 }

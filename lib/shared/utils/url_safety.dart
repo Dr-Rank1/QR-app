@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../security/payload_sanitizer.dart';
+
 class UrlSafety {
   static const _suspiciousPatterns = [
     'bit.ly',
@@ -29,8 +31,27 @@ class UrlSafety {
   }
 
   static Future<bool> confirmOpen(BuildContext context, String url) async {
-    final domain = extractDomain(url) ?? url;
-    final suspicious = looksSuspicious(url);
+    final sanitized = PayloadSanitizer.sanitizeUrl(url);
+    if (sanitized.isBlocked) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Blocked Link'),
+          content: Text(sanitized.blockReason ?? 'This link cannot be opened safely.'),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return false;
+    }
+
+    final safeUrl = sanitized.value;
+    final domain = extractDomain(safeUrl) ?? safeUrl;
+    final suspicious = looksSuspicious(safeUrl);
 
     final confirmed = await showDialog<bool>(
       context: context,
