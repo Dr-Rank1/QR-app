@@ -4,6 +4,10 @@ enum QRResultType {
   email,
   wifi,
   text,
+  sms,
+  geo,
+  vcard,
+  calendar,
 }
 
 extension QRResultTypeExtension on QRResultType {
@@ -19,6 +23,14 @@ extension QRResultTypeExtension on QRResultType {
         return 'Wi-Fi';
       case QRResultType.text:
         return 'Text';
+      case QRResultType.sms:
+        return 'SMS';
+      case QRResultType.geo:
+        return 'Location';
+      case QRResultType.vcard:
+        return 'Contact';
+      case QRResultType.calendar:
+        return 'Event';
     }
   }
 
@@ -34,6 +46,14 @@ extension QRResultTypeExtension on QRResultType {
         return 'wifi';
       case QRResultType.text:
         return 'text_fields';
+      case QRResultType.sms:
+        return 'sms';
+      case QRResultType.geo:
+        return 'location_on';
+      case QRResultType.vcard:
+        return 'contact_page';
+      case QRResultType.calendar:
+        return 'event';
     }
   }
 }

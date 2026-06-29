@@ -26,6 +26,20 @@ bin/
 ### VS Code ###
 .vscode/
 
+### Flutter / Dart ###
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iml
+
+### Android ###
+android/local.properties
+
 ### Mac OS ###
 .DS_Store
 

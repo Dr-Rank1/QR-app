@@ -59,7 +59,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     return Scaffold(
@@ -180,8 +179,6 @@ class _OnboardingPageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(

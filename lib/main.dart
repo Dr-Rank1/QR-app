@@ -6,29 +6,36 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'app/router.dart';
 import 'app/theme.dart';
+import 'features/history/data/repositories/scan_history_repository.dart';
+import 'features/scanner/domain/models/qr_result.dart';
 import 'features/settings/presentation/providers/settings_provider.dart';
+import 'shared/ads/interstitial_ad_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Google Mobile Ads (non-blocking)
   try {
     await MobileAds.instance.initialize();
   } catch (e) {
     debugPrint('Ad initialization failed: $e');
   }
 
-  // Initialize Hive
   await Hive.initFlutter();
-  await Hive.openBox('settings');
 
-  // Set preferred orientations
+  if (!Hive.isAdapterRegistered(0)) {
+    Hive.registerAdapter(QRResultAdapter());
+  }
+
+  await Hive.openBox('settings');
+  await ScanHistoryRepository().initialize();
+
+  interstitialAdManager.initialize();
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

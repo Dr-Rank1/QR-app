@@ -222,12 +222,7 @@ class _ScanLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final y = size.height * progress;
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
 
-    // Draw gradient-like scan line
     final gradient = Paint()
       ..shader = LinearGradient(
         colors: [

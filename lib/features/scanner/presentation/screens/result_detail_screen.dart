@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../history/data/repositories/scan_history_repository.dart';
+import '../../../history/presentation/providers/history_provider.dart';
 import '../../domain/enums/qr_result_type.dart';
 import '../../domain/models/qr_result.dart';
 import '../../../../shared/utils/qr_parser.dart';
+import '../../../../shared/utils/qr_type_ui.dart';
 
 class ResultDetailScreen extends ConsumerWidget {
   final String scanId;
@@ -19,23 +20,24 @@ class ResultDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<QRResult?>(
-      future: ScanHistoryRepository().getScan(scanId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
+    final historyAsync = ref.watch(scanHistoryProvider);
 
-        final result = snapshot.data;
+    return historyAsync.when(
+      loading: () => Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: Text('Error loading scan')),
+      ),
+      data: (scans) {
+        final result = scans.where((s) => s.id == scanId).firstOrNull;
+
         if (result == null) {
           return Scaffold(
             appBar: AppBar(),
-            body: const Center(
-              child: Text('Scan not found'),
-            ),
+            body: const Center(child: Text('Scan not found')),
           );
         }
 
@@ -45,43 +47,13 @@ class ResultDetailScreen extends ConsumerWidget {
   }
 }
 
-class _ResultDetailContent extends StatelessWidget {
+class _ResultDetailContent extends ConsumerWidget {
   final QRResult result;
 
   const _ResultDetailContent({required this.result});
 
-  Color _getTypeColor(QRResultType type) {
-    switch (type) {
-      case QRResultType.url:
-        return const Color(0xFF2196F3);
-      case QRResultType.phone:
-        return const Color(0xFF4CAF50);
-      case QRResultType.email:
-        return const Color(0xFFFF9800);
-      case QRResultType.wifi:
-        return const Color(0xFF9C27B0);
-      case QRResultType.text:
-        return const Color(0xFF607D8B);
-    }
-  }
-
-  IconData _getIcon() {
-    switch (result.type) {
-      case QRResultType.url:
-        return Icons.link;
-      case QRResultType.phone:
-        return Icons.phone;
-      case QRResultType.email:
-        return Icons.email;
-      case QRResultType.wifi:
-        return Icons.wifi;
-      case QRResultType.text:
-        return Icons.text_fields;
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -90,12 +62,20 @@ class _ResultDetailContent extends StatelessWidget {
         title: const Text('Scan Result'),
         actions: [
           IconButton(
+            icon: Icon(
+              result.isFavorite ? Icons.star : Icons.star_border,
+            ),
+            onPressed: () async {
+              await ref.read(scanHistoryProvider.notifier).toggleFavorite(result.id);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.share),
             onPressed: () => _share(context),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => _delete(context),
+            onPressed: () => _delete(context, ref),
           ),
         ],
       ),
@@ -104,34 +84,25 @@ class _ResultDetailContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Type badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
+                color: result.type.color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    _getIcon(),
-                    size: 18,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
+                  Icon(result.type.icon, size: 18, color: result.type.color),
                   const SizedBox(width: 8),
                   Text(
                     result.type.displayName,
-                    style: textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onPrimaryContainer,
-                    ),
+                    style: textTheme.labelLarge?.copyWith(color: result.type.color),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
-            // Value card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -153,10 +124,8 @@ class _ResultDetailContent extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Metadata (for Wi-Fi)
             if (result.metadata != null) ...[
+              const SizedBox(height: 16),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -185,10 +154,7 @@ class _ResultDetailContent extends StatelessWidget {
                                 ),
                               ),
                               Expanded(
-                                child: Text(
-                                  entry.value,
-                                  style: textTheme.bodyMedium,
-                                ),
+                                child: Text(entry.value, style: textTheme.bodyMedium),
                               ),
                             ],
                           ),
@@ -198,10 +164,8 @@ class _ResultDetailContent extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
             ],
-
-            // Scanned at
+            const SizedBox(height: 16),
             Text(
               'Scanned on ${_formatDate(result.scannedAt)}',
               style: textTheme.bodySmall?.copyWith(
@@ -209,8 +173,6 @@ class _ResultDetailContent extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-
-            // Action buttons
             _ActionButtons(result: result),
           ],
         ),
@@ -219,21 +181,20 @@ class _ResultDetailContent extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    final months = [
+    const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year} at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _share(BuildContext context) async {
-    await Share.share(
-      result.formattedValue,
-      subject: 'QR Scan Result',
+    await SharePlus.instance.share(
+      ShareParams(text: result.formattedValue, subject: 'QR Scan Result'),
     );
   }
 
-  Future<void> _delete(BuildContext context) async {
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -253,10 +214,8 @@ class _ResultDetailContent extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      await ScanHistoryRepository().deleteScan(result.id);
-      if (context.mounted) {
-        context.pop();
-      }
+      await ref.read(scanHistoryProvider.notifier).deleteScan(result.id);
+      if (context.mounted) context.pop();
     }
   }
 }
@@ -268,9 +227,13 @@ class _ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canOpen = result.type != QRResultType.text &&
+        result.type != QRResultType.wifi &&
+        result.type != QRResultType.vcard &&
+        result.type != QRResultType.calendar;
+
     return Column(
       children: [
-        // Copy button
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -279,10 +242,8 @@ class _ActionButtons extends StatelessWidget {
             label: const Text('Copy to Clipboard'),
           ),
         ),
-        const SizedBox(height: 12),
-
-        // Open button (for URLs, phone, email)
-        if (result.type != QRResultType.text && result.type != QRResultType.wifi)
+        if (canOpen) ...[
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -291,6 +252,7 @@ class _ActionButtons extends StatelessWidget {
               label: Text(_getOpenLabel()),
             ),
           ),
+        ],
       ],
     );
   }
@@ -303,9 +265,11 @@ class _ActionButtons extends StatelessWidget {
         return 'Call Number';
       case QRResultType.email:
         return 'Open Email App';
-      case QRResultType.wifi:
-        return 'Connect to Wi-Fi';
-      case QRResultType.text:
+      case QRResultType.sms:
+        return 'Send SMS';
+      case QRResultType.geo:
+        return 'Open in Maps';
+      default:
         return 'Open';
     }
   }
@@ -324,17 +288,12 @@ class _ActionButtons extends StatelessWidget {
       result.type,
       result.rawValue,
       result.metadata,
+      context: context,
     );
 
     if (!success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.type == QRResultType.wifi
-                ? 'Wi-Fi connection must be done manually'
-                : 'Could not open',
-          ),
-        ),
+        const SnackBar(content: Text('Could not open this content')),
       );
     }
   }

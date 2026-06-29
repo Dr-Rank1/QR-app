@@ -24,6 +24,9 @@ class QRResult extends HiveObject {
   @HiveField(5)
   final Map<String, String>? metadata;
 
+  @HiveField(6, defaultValue: false)
+  final bool isFavorite;
+
   QRResult({
     required this.id,
     required this.rawValue,
@@ -31,9 +34,10 @@ class QRResult extends HiveObject {
     required this.scannedAt,
     this.displayValue,
     this.metadata,
+    this.isFavorite = false,
   });
 
-  QRResultType get type => QRResultType.values[typeIndex];
+  QRResultType get type => QRResultType.values[typeIndex.clamp(0, QRResultType.values.length - 1)];
 
   String get formattedValue {
     if (displayValue != null && displayValue!.isNotEmpty) {
@@ -45,13 +49,21 @@ class QRResult extends HiveObject {
   String get subtitle {
     switch (type) {
       case QRResultType.url:
-        return rawValue;
       case QRResultType.phone:
-        return rawValue;
       case QRResultType.email:
         return rawValue;
       case QRResultType.wifi:
         return metadata?['ssid'] ?? rawValue;
+      case QRResultType.sms:
+        return metadata?['number'] ?? rawValue;
+      case QRResultType.geo:
+        return metadata?['lat'] != null
+            ? '${metadata!['lat']}, ${metadata!['lng']}'
+            : rawValue;
+      case QRResultType.vcard:
+        return metadata?['name'] ?? 'Contact card';
+      case QRResultType.calendar:
+        return metadata?['title'] ?? 'Calendar event';
       case QRResultType.text:
         return rawValue.length > 50
             ? '${rawValue.substring(0, 50)}...'
@@ -66,6 +78,7 @@ class QRResult extends HiveObject {
     DateTime? scannedAt,
     String? displayValue,
     Map<String, String>? metadata,
+    bool? isFavorite,
   }) {
     return QRResult(
       id: id ?? this.id,
@@ -74,6 +87,7 @@ class QRResult extends HiveObject {
       scannedAt: scannedAt ?? this.scannedAt,
       displayValue: displayValue ?? this.displayValue,
       metadata: metadata ?? this.metadata,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 }

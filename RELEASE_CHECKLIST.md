@@ -82,7 +82,6 @@
 - [ ] Test on iOS 17
 - [ ] Test on iOS 15
 - [ ] Verify offline functionality
-- [ ] Verify cloud sync (if enabled)
 
 ## Submission
 

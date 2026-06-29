@@ -1,28 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
-
+import 'package:permission_handler/permission_handler.dart' as ph;
 class AppPermissionHandler {
   static Future<bool> requestCameraPermission() async {
-    final status = await Permission.camera.request();
+    final status = await ph.Permission.camera.request();
     return status.isGranted;
   }
 
   static Future<bool> checkCameraPermission() async {
-    final status = await Permission.camera.status;
+    final status = await ph.Permission.camera.status;
     return status.isGranted;
   }
 
   static Future<bool> isCameraPermissionDenied() async {
-    final status = await Permission.camera.status;
+    final status = await ph.Permission.camera.status;
     return status.isPermanentlyDenied;
   }
 
   static Future<void> openAppSettings() async {
-    await openAppSettings();
+    await ph.openAppSettings();
   }
 
-  static Future<PermissionStatus> getCameraPermissionStatus() async {
-    return await Permission.camera.status;
+  static Future<ph.PermissionStatus> getCameraPermissionStatus() async {
+    return ph.Permission.camera.status;
   }
 }
 
@@ -50,7 +49,7 @@ Future<void> showPermissionDeniedDialog(BuildContext context) async {
         FilledButton(
           onPressed: () {
             Navigator.of(context).pop();
-            openAppSettings();
+            AppPermissionHandler.openAppSettings();
           },
           child: const Text('Open Settings'),
         ),

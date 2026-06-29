@@ -4,16 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/scanner/presentation/screens/scanner_screen.dart';
 import '../features/generator/presentation/screens/generator_screen.dart';
 import '../features/history/presentation/screens/enhanced_history_screen.dart';
+import '../features/settings/presentation/screens/settings_screen.dart';
 import '../../shared/ads/banner_ad_widget.dart';
-
-final _selectedIndexProvider = StateProvider<int>((ref) => 0);
+import 'navigation_provider.dart';
 
 class MainShell extends ConsumerWidget {
   const MainShell({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedIndex = ref.watch(_selectedIndexProvider);
+    final selectedIndex = ref.watch(selectedTabIndexProvider);
 
     return Scaffold(
       body: IndexedStack(
@@ -22,6 +22,7 @@ class MainShell extends ConsumerWidget {
           ScannerScreen(),
           GeneratorScreen(),
           EnhancedHistoryScreen(),
+          SettingsScreen(),
         ],
       ),
       bottomNavigationBar: Column(
@@ -30,7 +31,7 @@ class MainShell extends ConsumerWidget {
           NavigationBar(
             selectedIndex: selectedIndex,
             onDestinationSelected: (index) {
-              ref.read(_selectedIndexProvider.notifier).state = index;
+              ref.read(selectedTabIndexProvider.notifier).state = index;
             },
             destinations: const [
               NavigationDestination(
@@ -47,6 +48,11 @@ class MainShell extends ConsumerWidget {
                 icon: Icon(Icons.history_outlined),
                 selectedIcon: Icon(Icons.history),
                 label: 'History',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings),
+                label: 'Settings',
               ),
             ],
           ),

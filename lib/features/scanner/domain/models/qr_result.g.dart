@@ -23,13 +23,14 @@ class QRResultAdapter extends TypeAdapter<QRResult> {
       scannedAt: fields[3] as DateTime,
       displayValue: fields[4] as String?,
       metadata: (fields[5] as Map?)?.cast<String, String>(),
+      isFavorite: fields[6] == null ? false : fields[6] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, QRResult obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class QRResultAdapter extends TypeAdapter<QRResult> {
       ..writeByte(4)
       ..write(obj.displayValue)
       ..writeByte(5)
-      ..write(obj.metadata);
+      ..write(obj.metadata)
+      ..writeByte(6)
+      ..write(obj.isFavorite);
   }
 
   @override

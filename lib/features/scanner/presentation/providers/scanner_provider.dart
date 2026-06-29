@@ -5,8 +5,10 @@ import 'package:uuid/uuid.dart';
 import '../../domain/models/qr_result.dart';
 import '../../domain/enums/qr_result_type.dart';
 import '../../../history/data/repositories/scan_history_repository.dart';
+import '../../../history/presentation/providers/history_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../../../shared/utils/qr_parser.dart';
+import '../../../../shared/utils/scan_feedback.dart';
 
 enum ScannerStatus {
   initializing,
@@ -22,6 +24,7 @@ class ScannerState {
   final CameraFacing cameraFacing;
   final String? errorMessage;
   final QRResult? lastScan;
+  final bool hasCameraPermission;
 
   const ScannerState({
     this.status = ScannerStatus.initializing,
@@ -29,6 +32,7 @@ class ScannerState {
     this.cameraFacing = CameraFacing.back,
     this.errorMessage,
     this.lastScan,
+    this.hasCameraPermission = false,
   });
 
   ScannerState copyWith({
@@ -37,30 +41,25 @@ class ScannerState {
     CameraFacing? cameraFacing,
     String? errorMessage,
     QRResult? lastScan,
+    bool? hasCameraPermission,
+    bool clearLastScan = false,
   }) {
     return ScannerState(
       status: status ?? this.status,
       isTorchOn: isTorchOn ?? this.isTorchOn,
       cameraFacing: cameraFacing ?? this.cameraFacing,
-      errorMessage: errorMessage ?? this.errorMessage,
-      lastScan: lastScan ?? this.lastScan,
+      errorMessage: errorMessage,
+      lastScan: clearLastScan ? null : (lastScan ?? this.lastScan),
+      hasCameraPermission: hasCameraPermission ?? this.hasCameraPermission,
     );
   }
 }
 
 class ScannerStateNotifier extends StateNotifier<ScannerState> {
   final ScanHistoryRepository _historyRepository;
-  final SettingsStateNotifier _settingsNotifier;
   final Uuid _uuid = const Uuid();
 
-  ScannerStateNotifier(
-    this._historyRepository,
-    this._settingsNotifier,
-  ) : super(const ScannerState());
-
-  void setInitializing() {
-    state = state.copyWith(status: ScannerStatus.initializing);
-  }
+  ScannerStateNotifier(this._historyRepository) : super(const ScannerState());
 
   void setReady() {
     state = state.copyWith(status: ScannerStatus.ready);
@@ -70,6 +69,14 @@ class ScannerStateNotifier extends StateNotifier<ScannerState> {
     state = state.copyWith(
       status: ScannerStatus.error,
       errorMessage: message,
+    );
+  }
+
+  void setCameraPermission(bool granted) {
+    state = state.copyWith(
+      hasCameraPermission: granted,
+      status: granted ? ScannerStatus.ready : ScannerStatus.error,
+      errorMessage: granted ? null : 'Camera permission denied',
     );
   }
 
@@ -85,15 +92,13 @@ class ScannerStateNotifier extends StateNotifier<ScannerState> {
     );
   }
 
-  Future<void> processBarcode(String rawValue) async {
-    if (state.status == ScannerStatus.processing) return;
+  Future<QRResult?> processBarcode(String rawValue, SettingsState settings) async {
+    if (state.status == ScannerStatus.processing) return null;
 
     state = state.copyWith(status: ScannerStatus.processing);
 
-    // Parse the QR content
     final parsed = QRContentParser.parse(rawValue);
 
-    // Create QR result
     final result = QRResult(
       id: _uuid.v4(),
       rawValue: parsed.value,
@@ -102,60 +107,58 @@ class ScannerStateNotifier extends StateNotifier<ScannerState> {
       metadata: parsed.metadata,
     );
 
-    // Get display value based on type
     String? displayValue;
     switch (parsed.type) {
       case QRResultType.url:
-        displayValue = parsed.value;
-        break;
       case QRResultType.phone:
         displayValue = parsed.value;
-        break;
       case QRResultType.email:
         displayValue = parsed.value.replaceAll('mailto:', '');
-        break;
       case QRResultType.wifi:
-        displayValue = 'Wi-Fi: ${parsed.metadata?['ssid']}';
-        break;
+        displayValue = 'Wi-Fi: ${parsed.metadata?['ssid'] ?? 'Network'}';
+      case QRResultType.sms:
+        displayValue = 'SMS: ${parsed.metadata?['number'] ?? parsed.value}';
+      case QRResultType.geo:
+        displayValue = parsed.metadata?['lat'] != null
+            ? 'Location: ${parsed.metadata!['lat']}, ${parsed.metadata!['lng']}'
+            : parsed.value;
+      case QRResultType.vcard:
+        displayValue = parsed.metadata?['name'] ?? 'Contact card';
+      case QRResultType.calendar:
+        displayValue = parsed.metadata?['title'] ?? 'Calendar event';
       case QRResultType.text:
         displayValue = null;
-        break;
     }
 
     final finalResult = result.copyWith(displayValue: displayValue);
 
-    // Save to history
     await _historyRepository.addScan(finalResult);
+    ScanFeedback.onScan(settings);
 
     state = state.copyWith(
       status: ScannerStatus.ready,
       lastScan: finalResult,
     );
+
+    return finalResult;
   }
 
   void clearLastScan() {
-    state = state.copyWith(lastScan: null);
+    state = state.copyWith(clearLastScan: true);
   }
 
   void reset() {
     state = ScannerState(
       isTorchOn: state.isTorchOn,
       cameraFacing: state.cameraFacing,
+      hasCameraPermission: state.hasCameraPermission,
+      status: state.hasCameraPermission ? ScannerStatus.ready : ScannerStatus.error,
     );
   }
 }
 
-final _scanHistoryRepositoryProvider = Provider<ScanHistoryRepository>((ref) {
-  return ScanHistoryRepository();
-});
-
-final _settingsProvider = Provider<SettingsStateNotifier>((ref) {
-  return ref.watch(settingsProvider.notifier);
-});
-
 final scannerProvider =
     StateNotifierProvider<ScannerStateNotifier, ScannerState>((ref) {
-  final historyRepository = ref.watch(_scanHistoryRepositoryProvider);
-  final settingsNotifier = ref.watch(_settingsProvider);
-  return ScannerStateNotifier(historyRepository, settingsNotifier);
+  final historyRepository = ref.watch(scanHistoryRepositoryProvider);
+  return ScannerStateNotifier(historyRepository);
 });

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:uuid/uuid.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../../domain/models/qr_result.dart';
-import '../../../history/data/repositories/scan_history_repository.dart';
+import '../../../../app/router.dart';
+import '../../../history/presentation/providers/history_provider.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
+import '../providers/scanner_provider.dart';
 import '../../../../shared/ads/interstitial_ad_manager.dart';
+import '../../../../shared/utils/permission_handler.dart';
+import '../../../../shared/widgets/scan_overlay.dart';
 
 class ScannerScreen extends ConsumerStatefulWidget {
   const ScannerScreen({super.key});
@@ -19,185 +23,208 @@ class ScannerScreen extends ConsumerStatefulWidget {
 class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   MobileScannerController? _controller;
   bool _hasScanned = false;
-  String? _lastScannedCode;
+  bool _permissionChecked = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPermission();
+      _updateWakelock();
+      interstitialAdManager.initialize();
+    });
+  }
+
+  Future<void> _checkPermission() async {
+    final granted = await AppPermissionHandler.checkCameraPermission() ||
+        await AppPermissionHandler.requestCameraPermission();
+
+    if (!mounted) return;
+
+    ref.read(scannerProvider.notifier).setCameraPermission(granted);
+    setState(() => _permissionChecked = true);
+
+    if (!granted) {
+      if (await AppPermissionHandler.isCameraPermissionDenied()) {
+        if (mounted) await showPermissionDeniedDialog(context);
+      }
+      return;
+    }
+
+    _initController();
+  }
+
+  void _initController() {
+    final scannerState = ref.read(scannerProvider);
+    _controller?.dispose();
     _controller = MobileScannerController(
       detectionSpeed: DetectionSpeed.normal,
-      facing: CameraFacing.back,
+      facing: scannerState.cameraFacing,
+      torchEnabled: scannerState.isTorchOn,
     );
+    ref.read(scannerProvider.notifier).setReady();
+  }
+
+  void _updateWakelock() {
+    final settings = ref.read(settingsProvider);
+    if (settings.keepScreenOn) {
+      WakelockPlus.enable();
+    } else {
+      WakelockPlus.disable();
+    }
   }
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _controller?.dispose();
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) {
+  Future<void> _onDetect(BarcodeCapture capture) async {
     if (_hasScanned) return;
 
-    final List<Barcode> barcodes = capture.barcodes;
-    for (final barcode in barcodes) {
-      final String? code = barcode.rawValue;
-      if (code != null && code != _lastScannedCode) {
-        _lastScannedCode = code;
-        _hasScanned = true;
+    for (final barcode in capture.barcodes) {
+      final code = barcode.rawValue;
+      if (code == null) continue;
 
-        // Save to history
-        _saveScan(code);
+      _hasScanned = true;
+      final settings = ref.read(settingsProvider);
+      final result = await ref
+          .read(scannerProvider.notifier)
+          .processBarcode(code, settings);
 
-        // Show interstitial ad every 5 scans
-        interstitialAdManager.incrementAndShow();
-
-        // Show result
-        _showResult(code, barcode.format.name);
-        break;
-      }
-    }
-  }
-
-  Future<void> _saveScan(String code) async {
-    try {
-      final repo = ScanHistoryRepository();
-      await repo.initialize();
-      await repo.addScan(
-        QRResult(
-          id: const Uuid().v4(),
-          rawValue: code,
-          typeIndex: 0,
-          scannedAt: DateTime.now(),
-        ),
-      );
-    } catch (e) {
-      // Ignore errors
-    }
-  }
-
-  void _showResult(String code, String format) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.qr_code_scanner, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              code,
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text('Format: $format'),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                if (_canLaunchUrl(code))
-                  IconButton(
-                    icon: const Icon(Icons.open_in_new),
-                    onPressed: () => _launchUrl(code),
-                    tooltip: 'Open',
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.share),
-                  onPressed: () => Share.share(code),
-                  tooltip: 'Share',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy),
-                  onPressed: () {
-                    // Copy to clipboard
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied to clipboard')),
-                    );
-                  },
-                  tooltip: 'Copy',
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _hasScanned = false;
-                    _lastScannedCode = null;
-                  });
-                },
-                child: const Text('Scan Again'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).whenComplete(() {
-      setState(() {
+      if (!mounted || result == null) {
         _hasScanned = false;
-        _lastScannedCode = null;
-      });
-    });
-  }
+        return;
+      }
 
-  bool _canLaunchUrl(String text) {
-    return text.startsWith('http://') || text.startsWith('https://') ||
-        text.startsWith('www.');
-  }
+      ref.invalidate(scanHistoryProvider);
+      interstitialAdManager.incrementAndShow();
 
-  Future<void> _launchUrl(String text) async {
-    String url = text;
-    if (!url.startsWith('http')) {
-      url = 'https://$url';
+      if (mounted) {
+        await context.push(AppRoutes.resultDetailPath(result.id));
+      }
+
+      if (mounted) {
+        setState(() => _hasScanned = false);
+        ref.read(scannerProvider.notifier).clearLastScan();
+      }
+      break;
     }
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+  }
+
+  Future<void> _pickFromGallery() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null || !mounted) return;
+
+    final capture = await _controller?.analyzeImage(image.path);
+    if (capture != null) {
+      await _onDetect(capture);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No QR code found in image')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final scannerState = ref.watch(scannerProvider);
+
+    ref.listen(settingsProvider, (_, __) {
+      _updateWakelock();
+    });
+
+    ref.listen(scannerProvider.select((s) => s.isTorchOn), (prev, next) {
+      _controller?.toggleTorch();
+    });
+
+    ref.listen(scannerProvider.select((s) => s.cameraFacing), (prev, next) {
+      if (prev != next) _initController();
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan QR'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.flash_on),
-            onPressed: () => _controller?.toggleTorch(),
+            icon: const Icon(Icons.photo_library_outlined),
+            onPressed: _pickFromGallery,
+            tooltip: 'Scan from gallery',
+          ),
+          IconButton(
+            icon: Icon(scannerState.isTorchOn ? Icons.flash_on : Icons.flash_off),
+            onPressed: scannerState.hasCameraPermission
+                ? () => ref.read(scannerProvider.notifier).toggleTorch()
+                : null,
           ),
           IconButton(
             icon: const Icon(Icons.flip_camera_android),
-            onPressed: () => _controller?.switchCamera(),
+            onPressed: scannerState.hasCameraPermission
+                ? () => ref.read(scannerProvider.notifier).switchCamera()
+                : null,
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-          ),
-          // Scan overlay
-          Center(
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 3,
+      body: !_permissionChecked
+          ? const Center(child: CircularProgressIndicator())
+          : !scannerState.hasCameraPermission
+              ? _PermissionDeniedBody(onRetry: _checkPermission)
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (_controller != null)
+                          MobileScanner(
+                            controller: _controller,
+                            onDetect: _onDetect,
+                          ),
+                        ScanOverlay(
+                          width: constraints.maxWidth,
+                          height: constraints.maxHeight,
+                          scanLineColor: Theme.of(context).colorScheme.primary,
+                        ),
+                      ],
+                    );
+                  },
                 ),
-                borderRadius: BorderRadius.circular(12),
-              ),
+    );
+  }
+}
+
+class _PermissionDeniedBody extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _PermissionDeniedBody({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.camera_alt_outlined, size: 64, color: Theme.of(context).colorScheme.error),
+            const SizedBox(height: 16),
+            const Text(
+              'Camera access is required to scan QR codes',
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: onRetry,
+              child: const Text('Grant Permission'),
+            ),
+            TextButton(
+              onPressed: AppPermissionHandler.openAppSettings,
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
       ),
     );
   }
