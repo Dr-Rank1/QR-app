@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../app/app_spacing.dart';
 import '../../../../app/router.dart';
+import '../../../../app/theme.dart';
 import '../../../../shared/utils/app_haptics.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
 import '../../../../shared/widgets/app_icons.dart';
@@ -54,11 +55,15 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History'),
+        title: Text(
+          'HISTORY',
+          style: AppTheme.monoLabel(context, size: 11, weight: FontWeight.w700),
+        ),
         actions: [
           const ThemeModeToggle(),
           PopupMenuButton<_HistoryMenuAction>(
             tooltip: 'More',
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             onSelected: (action) {
               switch (action) {
                 case _HistoryMenuAction.export:
@@ -270,7 +275,7 @@ class _VaultEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final muted = colorScheme.onSurfaceVariant.withValues(alpha: 0.45);
+    final muted = colorScheme.onSurfaceVariant.withValues(alpha: 0.3);
 
     return Center(
       child: Padding(
@@ -279,20 +284,22 @@ class _VaultEmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isSearching ? Icons.search_off_rounded : Icons.inventory_2_outlined,
-              size: 44,
+              isSearching ? Icons.search_off_outlined : Icons.inventory_2_outlined,
+              size: 56,
               color: muted,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
-              isSearching ? 'No matches' : 'Vault is empty',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface.withValues(alpha: 0.85),
-                  ),
+              isSearching ? 'NO MATCHES' : 'VAULT IS EMPTY',
+              style: AppTheme.monoLabel(
+                context,
+                size: 11,
+                weight: FontWeight.w700,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+              ),
             ),
             if (!isSearching) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 'Scanned codes will appear here',
                 textAlign: TextAlign.center,
@@ -342,42 +349,48 @@ class _VaultHistoryTile extends StatelessWidget {
         await onDelete();
         return true;
       },
-      child: Material(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
-              children: [
-                Icon(
-                  scan.type.icon,
-                  size: 20,
-                  color: scan.type.color.withValues(alpha: 0.75),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    _displayTitle(scan),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          height: 1.35,
-                        ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          border: Border.all(color: colorScheme.outline),
+          borderRadius: BorderRadius.zero,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 2,
+                    height: 20,
+                    color: scan.type.color,
+                    margin: const EdgeInsets.only(right: 12),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  _relativeDate(scan.scannedAt),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                ),
-              ],
+                  Expanded(
+                    child: Text(
+                      _displayTitle(scan),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            height: 1.35,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _relativeDate(scan.scannedAt),
+                    style: AppTheme.monoLabel(
+                      context,
+                      size: 9,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -439,7 +452,7 @@ class _DismissBackground extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 22),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.zero,
       ),
       child: Icon(AppIcons.delete, color: iconColor, size: 22),
     );

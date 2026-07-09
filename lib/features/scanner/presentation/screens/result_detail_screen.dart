@@ -15,6 +15,7 @@ import '../../../../shared/utils/qr_type_ui.dart';
 import '../../../../shared/utils/url_safety.dart';
 import '../../../../shared/security/sensitive_metadata.dart';
 import '../../../../shared/utils/app_haptics.dart';
+import '../../../../app/theme.dart';
 import '../../../../shared/widgets/app_icons.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/theme_mode_toggle.dart';
@@ -75,7 +76,14 @@ class _ResultDetailContent extends ConsumerWidget {
             context.pop();
           },
         ),
-        title: const Text('Scan Result'),
+        title: Text(
+          'RESULT',
+          style: AppTheme.monoLabel(
+            context,
+            size: 12,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(
@@ -146,8 +154,11 @@ class _PayloadCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.zero,
+        side: BorderSide(color: colorScheme.outline),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -156,17 +167,9 @@ class _PayloadCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: result.type.color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    result.type.icon,
-                    color: result.type.color,
-                    size: 28,
-                  ),
+                  width: 3,
+                  height: 40,
+                  color: result.type.color,
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -174,17 +177,17 @@ class _PayloadCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        result.type.displayName,
-                        style: textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
+                        result.type.displayName.toUpperCase(),
+                        style: AppTheme.monoLabel(
+                          context,
+                          size: 11,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Decoded payload',
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                        'DECODED PAYLOAD',
+                        style: AppTheme.monoLabel(context),
                       ),
                     ],
                   ),
@@ -279,18 +282,19 @@ class _MetadataCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.zero,
+        side: BorderSide(color: colorScheme.outline),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Details',
-              style: textTheme.labelLarge?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              'DETAILS',
+              style: AppTheme.monoLabel(context),
             ),
             const SizedBox(height: 10),
             ...metadata.entries.map(
@@ -341,36 +345,34 @@ class _ActionButtons extends ConsumerWidget {
           FilledButton.icon(
             onPressed: () => _primaryAction(context),
             icon: Icon(_primaryIcon(result.type)),
-            label: Text(_primaryLabel(result.type)),
+            label: Text(_primaryLabel(result.type).toUpperCase()),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
           ),
         const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: () => _copy(context),
-                icon: const Icon(AppIcons.copy, size: 20),
-                label: const Text('Copy'),
+                child: const Text('COPY'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: () => _share(context),
-                icon: const Icon(AppIcons.share, size: 20),
-                label: const Text('Share'),
+                child: const Text('SHARE'),
               ),
             ),
             if (result.type == QRResultType.url) ...[
               const SizedBox(width: 8),
               Expanded(
-                child: OutlinedButton.icon(
+                child: OutlinedButton(
                   onPressed: () => _webSearch(context),
-                  icon: const Icon(Icons.search_outlined, size: 20),
-                  label: const Text('Search'),
+                  child: const Text('SEARCH'),
                 ),
               ),
             ],

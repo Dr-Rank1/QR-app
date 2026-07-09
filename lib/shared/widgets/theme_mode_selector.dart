@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/theme.dart';
 import '../../features/settings/presentation/providers/settings_provider.dart';
 import '../utils/app_haptics.dart';
 
@@ -15,44 +16,41 @@ class ThemeModeSelector extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      child: DecoratedBox(
+      child: Container(
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.zero,
+          border: Border.all(color: colorScheme.outline),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Row(
-            children: [
-              _ThemeOption(
-                icon: Icons.brightness_auto_rounded,
-                label: 'System',
-                selected: themeMode == ThemeMode.system,
-                onTap: () => ref
-                    .read(settingsProvider.notifier)
-                    .setThemeMode(ThemeMode.system),
-              ),
-              _ThemeOption(
-                icon: Icons.light_mode_rounded,
-                label: 'Light',
-                selected: themeMode == ThemeMode.light,
-                onTap: () => ref
-                    .read(settingsProvider.notifier)
-                    .setThemeMode(ThemeMode.light),
-              ),
-              _ThemeOption(
-                icon: Icons.dark_mode_rounded,
-                label: 'Dark',
-                selected: themeMode == ThemeMode.dark,
-                onTap: () => ref
-                    .read(settingsProvider.notifier)
-                    .setThemeMode(ThemeMode.dark),
-              ),
-            ],
-          ),
+        child: Row(
+          children: [
+            _ThemeOption(
+              icon: Icons.brightness_auto_outlined,
+              label: 'SYSTEM',
+              selected: themeMode == ThemeMode.system,
+              onTap: () => ref
+                  .read(settingsProvider.notifier)
+                  .setThemeMode(ThemeMode.system),
+            ),
+            Container(width: 1, height: 48, color: colorScheme.outline),
+            _ThemeOption(
+              icon: Icons.light_mode_outlined,
+              label: 'LIGHT',
+              selected: themeMode == ThemeMode.light,
+              onTap: () => ref
+                  .read(settingsProvider.notifier)
+                  .setThemeMode(ThemeMode.light),
+            ),
+            Container(width: 1, height: 48, color: colorScheme.outline),
+            _ThemeOption(
+              icon: Icons.dark_mode_outlined,
+              label: 'DARK',
+              selected: themeMode == ThemeMode.dark,
+              onTap: () => ref
+                  .read(settingsProvider.notifier)
+                  .setThemeMode(ThemeMode.dark),
+            ),
+          ],
         ),
       ),
     );
@@ -82,14 +80,9 @@ class _ThemeOption extends StatelessWidget {
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: selected
-              ? colorScheme.primary.withValues(alpha: 0.16)
+              ? colorScheme.primary
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: selected
-              ? Border.all(
-                  color: colorScheme.primary.withValues(alpha: 0.35),
-                )
-              : null,
+          borderRadius: BorderRadius.zero,
         ),
         child: Material(
           color: Colors.transparent,
@@ -98,7 +91,6 @@ class _ThemeOption extends StatelessWidget {
               await AppHaptics.selection();
               onTap();
             },
-            borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
@@ -109,22 +101,23 @@ class _ThemeOption extends StatelessWidget {
                     child: Icon(
                       icon,
                       key: ValueKey('$label-$selected'),
-                      size: 22,
+                      size: 20,
                       color: selected
-                          ? colorScheme.primary
+                          ? colorScheme.onPrimary
                           : colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     label,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight:
-                              selected ? FontWeight.w700 : FontWeight.w500,
-                          color: selected
-                              ? colorScheme.primary
-                              : colorScheme.onSurfaceVariant,
-                        ),
+                    style: AppTheme.monoLabel(
+                      context,
+                      size: 8,
+                      weight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

@@ -5,12 +5,15 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../app/app_spacing.dart';
 import '../../../../app/app_info.dart';
+import '../../../../app/theme.dart';
 import '../../../../shared/services/crash_reporter.dart';
+import '../../../../shared/utils/qr_type_ui.dart';
 import '../../../../shared/widgets/app_icons.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/theme_mode_selector.dart';
 import '../../../../shared/widgets/theme_mode_toggle.dart';
 import '../../../history/presentation/providers/history_provider.dart';
+import '../../../scanner/domain/enums/qr_result_type.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -22,7 +25,10 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(
+          'SETTINGS',
+          style: AppTheme.monoLabel(context, size: 11, weight: FontWeight.w700),
+        ),
         actions: const [ThemeModeToggle()],
       ),
       body: ListView(
@@ -136,6 +142,8 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: 32),
+          _BrandFooter(),
           const SizedBox(height: 16),
         ],
       ),
@@ -310,11 +318,7 @@ class _SettingsSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label.toUpperCase(),
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.1,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+      style: AppTheme.monoLabel(context, size: 10, weight: FontWeight.w500),
     );
   }
 }
@@ -327,17 +331,30 @@ class _SettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    
+    final dividedChildren = <Widget>[];
+    for (var i = 0; i < children.length; i++) {
+      dividedChildren.add(children[i]);
+      if (i < children.length - 1) {
+        dividedChildren.add(Divider(
+          height: 1,
+          thickness: 1,
+          color: colorScheme.outline,
+          indent: 16,
+          endIndent: 16,
+        ));
+      }
+    }
 
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border.all(color: colorScheme.outline),
+        borderRadius: BorderRadius.zero,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
+        children: dividedChildren,
       ),
     );
   }
@@ -366,9 +383,8 @@ class _SettingsToggleTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => onChanged(!value),
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Icon(icon, size: AppIcons.sizeList, color: colorScheme.onSurfaceVariant),
@@ -427,7 +443,6 @@ class _DestructiveSettingsTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -500,7 +515,61 @@ class _SettingsNavTile extends StatelessWidget {
           : null,
       trailing: trailing,
       onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+    );
+  }
+}
+
+class _BrandFooter extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final allTypes = QRResultType.values;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'QR Studio',
+          style: AppTheme.displayTitle(context, size: 20),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Version ${AppInfo.versionLabel}',
+          style: AppTheme.monoLabel(context, size: 9),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'TYPE COLORS',
+          style: AppTheme.monoLabel(context, size: 9),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: allTypes.map((type) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 2,
+                  height: 14,
+                  color: type.color,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  type.name.toUpperCase(),
+                  style: AppTheme.monoLabel(
+                    context,
+                    size: 8,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

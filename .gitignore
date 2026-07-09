@@ -47,7 +47,9 @@ android/.gradle/
 ### Android Keystore ###
 key.properties
 *.jks
+*.p12
 android/signing-credentials.local.txt
+*.pem
 
 ### Local build artifacts & analysis dumps ###
 *.apk
@@ -59,3 +61,6 @@ apk_unzip/
 tools/
 assets/icon-options/
 qr_vault_app_icon.png
+_ui_ref/
+QR Code Scanner App.zip
+upload_certificate.pem

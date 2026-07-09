@@ -50,7 +50,7 @@ class SoftRipple extends StatelessWidget {
     required this.child,
     this.onTap,
     this.onLongPress,
-    this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+    this.borderRadius = BorderRadius.zero,
     this.padding,
   });
 

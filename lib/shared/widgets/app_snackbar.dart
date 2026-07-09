@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../app/app_messenger.dart';
 
-/// Consistent floating snackbars for success, info, and error feedback.
+/// Floating snackbars with sharp monochrome chrome.
 abstract final class AppSnackBar {
   static void showSuccess(BuildContext context, String message) {
     _show(
       context,
       message,
       icon: Icons.check_circle_outline_rounded,
-      background: Theme.of(context).colorScheme.primaryContainer,
-      foreground: Theme.of(context).colorScheme.onPrimaryContainer,
+      background: Theme.of(context).colorScheme.inverseSurface,
+      foreground: Theme.of(context).colorScheme.onInverseSurface,
     );
   }
 
@@ -29,8 +30,8 @@ abstract final class AppSnackBar {
       context,
       message,
       icon: Icons.error_outline_rounded,
-      background: Theme.of(context).colorScheme.errorContainer,
-      foreground: Theme.of(context).colorScheme.onErrorContainer,
+      background: Theme.of(context).colorScheme.error,
+      foreground: Theme.of(context).colorScheme.onError,
     );
   }
 
@@ -51,20 +52,20 @@ abstract final class AppSnackBar {
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: background,
-          elevation: 8,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 0,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 72),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           content: Row(
             children: [
-              Icon(icon, color: foreground, size: 22),
+              Icon(icon, color: foreground, size: 18),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   message,
-                  style: TextStyle(
-                    color: foreground,
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
+                    color: foreground,
                   ),
                 ),
               ),

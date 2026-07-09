@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:screenshot/screenshot.dart';
 
 import '../../../../app/app_spacing.dart';
+import '../../../../app/theme.dart';
 import '../../../../shared/services/service_providers.dart';
 import '../../../../shared/utils/app_haptics.dart';
 import '../../../../shared/widgets/app_icons.dart';
@@ -22,10 +22,11 @@ class GeneratorScreen extends ConsumerStatefulWidget {
 
 class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
   final _fieldControllers = <String, TextEditingController>{};
-  double _qrSize = 200;
-  bool _embedLogo = false;
-  bool _roundedModules = false;
-  bool _advancedExpanded = false;
+  final double _qrSize = 200;
+  final bool _embedLogo = false;
+  final bool _roundedModules = false;
+  Color _foregroundColor = Colors.black;
+  Color _backgroundColor = Colors.white;
 
   QrGenerationService get _qrService => ref.read(qrGenerationServiceProvider);
 
@@ -33,6 +34,8 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
         size: _qrSize,
         embedLogo: _embedLogo,
         roundedModules: _roundedModules,
+        foregroundColor: _foregroundColor,
+        backgroundColor: _backgroundColor,
       );
 
   @override
@@ -86,21 +89,6 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
     }
   }
 
-  Future<void> _shareText(String payload) async {
-    if (payload.trim().isEmpty) return;
-
-    try {
-      await ref.read(shareServiceProvider).shareText(payload);
-      await AppHaptics.success();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not share content: $e')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(generatorProvider);
@@ -129,195 +117,155 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
         title: const Text('QR Studio'),
         actions: const [ThemeModeToggle()],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
+      body: Column(
         children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
-              child: _QrPreviewCard(
-                hasQrCode: hasQrCode,
+          _QrPreviewBand(
+            selectedType: state.type,
+            hasQrCode: hasQrCode,
+            hasValidationErrors: state.hasValidationErrors,
+            screenshotChild: Screenshot(
+              controller: _qrService.screenshotController,
+              child: _AsyncQrPreview(
+                data: payload,
                 hasValidationErrors: state.hasValidationErrors,
-                screenshotChild: Screenshot(
-                  controller: _qrService.screenshotController,
-                  child: _AsyncQrPreview(
-                    data: payload,
-                    hasValidationErrors: state.hasValidationErrors,
-                    options: _renderOptions,
-                  ),
-                ),
+                foregroundColor: _foregroundColor,
+                backgroundColor: _backgroundColor,
+                options: _renderOptions,
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          _TypeSelector(
-            selected: state.type,
-            onSelected: notifier.setType,
-          ),
-          const SizedBox(height: 28),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Details', style: Theme.of(context).textTheme.titleSmall),
-          ),
-          const SizedBox(height: 12),
-          _ContentForm(
-            type: state.type,
-            fields: state.fields,
-            fieldErrors: state.fieldErrors,
-            controllers: _fieldControllers,
-            onChanged: notifier.updateField,
-          ),
-          const SizedBox(height: 16),
-          _AdvancedOptionsPanel(
-            expanded: _advancedExpanded,
-            qrSize: _qrSize,
-            embedLogo: _embedLogo,
-            roundedModules: _roundedModules,
-            onExpansionChanged: (value) =>
-                setState(() => _advancedExpanded = value),
-            onQrSizeChanged: (value) => setState(() => _qrSize = value),
-            onEmbedLogoChanged: (value) => setState(() => _embedLogo = value),
-            onRoundedModulesChanged: (value) =>
-                setState(() => _roundedModules = value),
-          ),
-          const SizedBox(height: 24),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            child: hasQrCode
-                ? Row(
-                    key: const ValueKey('secondary-actions'),
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: payload),
-                            );
-                            await AppHaptics.success();
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Copied to clipboard'),
-                                ),
-                              );
-                            }
-                          },
-                          icon: const Icon(AppIcons.copy),
-                          label: const Text('Copy'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
+              children: [
+                const SizedBox(height: 20),
+                Text('TYPE', style: AppTheme.monoLabel(context)),
+                const SizedBox(height: 8),
+                _TypeGrid(
+                  selected: state.type,
+                  onSelected: notifier.setType,
+                ),
+                const SizedBox(height: 24),
+                Text('CONTENT', style: AppTheme.monoLabel(context)),
+                const SizedBox(height: 8),
+                _ContentForm(
+                  type: state.type,
+                  fields: state.fields,
+                  fieldErrors: state.fieldErrors,
+                  controllers: _fieldControllers,
+                  onChanged: notifier.updateField,
+                ),
+                const SizedBox(height: 24),
+                Text('QR COLOR', style: AppTheme.monoLabel(context)),
+                const SizedBox(height: 8),
+                _ColorSwatchPicker(
+                  selectedColor: _foregroundColor,
+                  onColorSelected: (color) =>
+                      setState(() => _foregroundColor = color),
+                ),
+                const SizedBox(height: 20),
+                Text('BACKGROUND', style: AppTheme.monoLabel(context)),
+                const SizedBox(height: 8),
+                _ColorSwatchPicker(
+                  selectedColor: _backgroundColor,
+                  onColorSelected: (color) =>
+                      setState(() => _backgroundColor = color),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: hasQrCode ? () async {
+                      final pngBytes = await _qrService.renderQrPng(
+                        payload,
+                        options: _renderOptions.copyWith(
+                          foregroundColor: _foregroundColor,
+                          backgroundColor: _backgroundColor,
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _shareText(payload),
-                          icon: const Icon(AppIcons.share),
-                          label: const Text('Share data'),
-                        ),
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink(key: ValueKey('no-secondary-actions')),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: hasQrCode ? () => _shareImage(payload) : null,
-              icon: const Icon(Icons.image_outlined),
-              label: const Text('Share as image'),
+                      );
+                      final shareService = ref.read(shareServiceProvider);
+                      await shareService.shareQrImage(pngBytes);
+                      await AppHaptics.success();
+                    } : null,
+                    child: const Text('SAVE'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: hasQrCode ? () => _shareImage(payload) : null,
+                    child: const Text('SHARE'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
         ],
       ),
     );
   }
 }
 
-class _QrPreviewCard extends StatelessWidget {
+class _QrPreviewBand extends StatelessWidget {
+  final GeneratorContentType selectedType;
   final bool hasQrCode;
   final bool hasValidationErrors;
   final Widget screenshotChild;
 
-  const _QrPreviewCard({
+  const _QrPreviewBand({
+    required this.selectedType,
     required this.hasQrCode,
     required this.hasValidationErrors,
     required this.screenshotChild,
   });
 
+  static Color _accentColorForType(GeneratorContentType type) {
+    switch (type) {
+      case GeneratorContentType.url:
+        return const Color(0xFF3b82f6);
+      case GeneratorContentType.email:
+        return const Color(0xFFf97316);
+      case GeneratorContentType.phone:
+        return const Color(0xFF22c55e);
+      case GeneratorContentType.sms:
+        return const Color(0xFFeab308);
+      case GeneratorContentType.contact:
+        return const Color(0xFFec4899);
+      case GeneratorContentType.wifi:
+        return const Color(0xFF06b6d4);
+      case GeneratorContentType.text:
+        return const Color(0xFF737373);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final accentColor = _accentColorForType(selectedType);
 
-    return DecoratedBox(
+    return Container(
+      height: 192,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.38),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
-          ),
-          BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Card(
-        margin: EdgeInsets.zero,
-        color: colorScheme.surfaceContainerLow,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  screenshotChild,
-                  if (!hasQrCode) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      hasValidationErrors
-                          ? 'Fix the highlighted fields to preview your code'
-                          : 'Enter details below to generate your QR code',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: hasValidationErrors
-                                ? colorScheme.error
-                                : colorScheme.onSurfaceVariant,
-                            height: 1.35,
-                          ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
+        color: colorScheme.surfaceContainer,
+        border: Border(
+          top: BorderSide(color: accentColor, width: 3),
+          bottom: BorderSide(color: colorScheme.outline),
         ),
+      ),
+      child: Center(
+        child: screenshotChild,
       ),
     );
   }
 }
 
-class _TypeSelector extends StatelessWidget {
+class _TypeGrid extends StatelessWidget {
   final GeneratorContentType selected;
   final ValueChanged<GeneratorContentType> onSelected;
 
-  const _TypeSelector({
+  const _TypeGrid({
     required this.selected,
     required this.onSelected,
   });
@@ -341,157 +289,92 @@ class _TypeSelector extends StatelessWidget {
     }
   }
 
+  static Color _colorFor(GeneratorContentType type) {
+    switch (type) {
+      case GeneratorContentType.url:
+        return const Color(0xFF3b82f6);
+      case GeneratorContentType.email:
+        return const Color(0xFFf97316);
+      case GeneratorContentType.phone:
+        return const Color(0xFF22c55e);
+      case GeneratorContentType.sms:
+        return const Color(0xFFeab308);
+      case GeneratorContentType.contact:
+        return const Color(0xFFec4899);
+      case GeneratorContentType.wifi:
+        return const Color(0xFF06b6d4);
+      case GeneratorContentType.text:
+        return const Color(0xFF737373);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final types = GeneratorContentType.values;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
+    return Container(
+      color: colorScheme.outline,
       child: Row(
-        children: types.map((type) {
-          final isSelected = selected == type;
-          return Padding(
-            padding: const EdgeInsets.only(right: 14),
-            child: InkWell(
-              onTap: () => onSelected(type),
-              borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                width: 64,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.surfaceContainerHigh,
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: colorScheme.primary.withValues(alpha: 0.28),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Icon(
-                        _iconFor(type),
-                        size: 24,
-                        color: isSelected
-                            ? colorScheme.onPrimary
-                            : colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      type.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w500,
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
+        children: [
+          for (int i = 0; i < types.length; i++) ...[
+            if (i > 0) SizedBox(width: 1),
+            Expanded(
+              child: _TypeCell(
+                type: types[i],
+                isSelected: selected == types[i],
+                icon: _iconFor(types[i]),
+                color: _colorFor(types[i]),
+                onTap: () => onSelected(types[i]),
               ),
             ),
-          );
-        }).toList(),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _AdvancedOptionsPanel extends StatelessWidget {
-  final bool expanded;
-  final double qrSize;
-  final bool embedLogo;
-  final bool roundedModules;
-  final ValueChanged<bool> onExpansionChanged;
-  final ValueChanged<double> onQrSizeChanged;
-  final ValueChanged<bool> onEmbedLogoChanged;
-  final ValueChanged<bool> onRoundedModulesChanged;
+class _TypeCell extends StatelessWidget {
+  final GeneratorContentType type;
+  final bool isSelected;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
 
-  const _AdvancedOptionsPanel({
-    required this.expanded,
-    required this.qrSize,
-    required this.embedLogo,
-    required this.roundedModules,
-    required this.onExpansionChanged,
-    required this.onQrSizeChanged,
-    required this.onEmbedLogoChanged,
-    required this.onRoundedModulesChanged,
+  const _TypeCell({
+    required this.type,
+    required this.isSelected,
+    required this.icon,
+    required this.color,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: expanded,
-          onExpansionChanged: onExpansionChanged,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          title: Text(
-            'Advanced options',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          subtitle: Text(
-            'Size, logo, module style',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-          ),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 72,
+        color: isSelected ? color : colorScheme.surface,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Text('Size', style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Slider(
-                    value: qrSize,
-                    min: 160,
-                    max: 260,
-                    divisions: 5,
-                    label: qrSize.round().toString(),
-                    onChanged: onQrSizeChanged,
-                  ),
-                ),
-                Text(
-                  '${qrSize.round()}',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-              ],
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Embed app logo'),
-              subtitle: const Text('Place a small logo in the center'),
-              value: embedLogo,
-              onChanged: onEmbedLogoChanged,
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Rounded modules'),
-              subtitle: const Text('Use circular dots instead of squares'),
-              value: roundedModules,
-              onChanged: onRoundedModulesChanged,
+            const SizedBox(height: 4),
+            Text(
+              type.label.toUpperCase(),
+              style: AppTheme.monoLabel(
+                context,
+                size: 8,
+                color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -500,14 +383,81 @@ class _AdvancedOptionsPanel extends StatelessWidget {
   }
 }
 
+class _ColorSwatchPicker extends StatelessWidget {
+  final Color selectedColor;
+  final ValueChanged<Color> onColorSelected;
+
+  const _ColorSwatchPicker({
+    required this.selectedColor,
+    required this.onColorSelected,
+  });
+
+  static const List<Color> _palette = [
+    Color(0xFF000000),
+    Color(0xFFFFFFFF),
+    Color(0xFFef4444),
+    Color(0xFFf97316),
+    Color(0xFFeab308),
+    Color(0xFF22c55e),
+    Color(0xFF3b82f6),
+    Color(0xFF8b5cf6),
+    Color(0xFFec4899),
+    Color(0xFF06b6d4),
+    Color(0xFF14b8a6),
+    Color(0xFFa3e635),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: _palette.map((color) {
+        final isSelected = selectedColor == color;
+        return InkWell(
+          onTap: () => onColorSelected(color),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color,
+              border: Border.all(
+                color: isSelected
+                    ? colorScheme.onSurface
+                    : colorScheme.outline,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: isSelected
+                ? Icon(
+                    Icons.check,
+                    size: 20,
+                    color: color.computeLuminance() > 0.5
+                        ? Colors.black
+                        : Colors.white,
+                  )
+                : null,
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
 class _AsyncQrPreview extends StatefulWidget {
   final String data;
   final bool hasValidationErrors;
+  final Color foregroundColor;
+  final Color backgroundColor;
   final QrRenderOptions options;
 
   const _AsyncQrPreview({
     required this.data,
     required this.hasValidationErrors,
+    required this.foregroundColor,
+    required this.backgroundColor,
     required this.options,
   });
 
@@ -531,6 +481,8 @@ class _AsyncQrPreviewState extends State<_AsyncQrPreview> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.data != widget.data ||
         oldWidget.hasValidationErrors != widget.hasValidationErrors ||
+        oldWidget.foregroundColor != widget.foregroundColor ||
+        oldWidget.backgroundColor != widget.backgroundColor ||
         oldWidget.options != widget.options) {
       _scheduleGenerate(widget.data, widget.hasValidationErrors);
     }
@@ -563,8 +515,8 @@ class _AsyncQrPreviewState extends State<_AsyncQrPreview> {
   Widget build(BuildContext context) {
     if (_isGenerating) {
       return SizedBox(
-        width: widget.options.size,
-        height: widget.options.size,
+        width: 160,
+        height: 160,
         child: const Center(
           child: SizedBox(
             width: 28,
@@ -575,16 +527,25 @@ class _AsyncQrPreviewState extends State<_AsyncQrPreview> {
       );
     }
 
-    return _QrPreview(data: _renderData, options: widget.options);
+    return _QrPreview(
+      data: _renderData,
+      foregroundColor: widget.foregroundColor,
+      backgroundColor: widget.backgroundColor,
+      options: widget.options,
+    );
   }
 }
 
 class _QrPreview extends StatelessWidget {
   final String data;
+  final Color foregroundColor;
+  final Color backgroundColor;
   final QrRenderOptions options;
 
   const _QrPreview({
     required this.data,
+    required this.foregroundColor,
+    required this.backgroundColor,
     required this.options,
   });
 
@@ -594,51 +555,58 @@ class _QrPreview extends StatelessWidget {
 
     if (data.trim().isEmpty) {
       return SizedBox(
-        width: options.size,
-        height: options.size,
+        width: 160,
+        height: 160,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.qr_code_2_outlined,
-              size: 72,
+              size: 48,
               color: colorScheme.outline.withValues(alpha: 0.55),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
-              'QR preview',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: colorScheme.outline.withValues(alpha: 0.7),
-                    letterSpacing: 0.4,
-                  ),
+              'QR PREVIEW',
+              style: AppTheme.monoLabel(
+                context,
+                size: 9,
+                color: colorScheme.outline.withValues(alpha: 0.7),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return QrImageView(
-      data: data,
-      version: QrVersions.auto,
-      size: options.size,
-      backgroundColor: Colors.white,
-      embeddedImage:
-          options.embedLogo ? const AssetImage('assets/app_icon.png') : null,
-      embeddedImageStyle: options.embedLogo
-          ? QrEmbeddedImageStyle(
-              size: Size(options.size * 0.18, options.size * 0.18),
-            )
-          : null,
-      eyeStyle: QrEyeStyle(
-        eyeShape:
-            options.roundedModules ? QrEyeShape.circle : QrEyeShape.square,
-        color: Colors.black,
-      ),
-      dataModuleStyle: QrDataModuleStyle(
-        dataModuleShape: options.roundedModules
-            ? QrDataModuleShape.circle
-            : QrDataModuleShape.square,
-        color: Colors.black,
+    return Container(
+      width: 160,
+      height: 160,
+      color: backgroundColor,
+      padding: const EdgeInsets.all(12),
+      child: QrImageView(
+        data: data,
+        version: QrVersions.auto,
+        size: 136,
+        backgroundColor: backgroundColor,
+        embeddedImage:
+            options.embedLogo ? const AssetImage('assets/app_icon.png') : null,
+        embeddedImageStyle: options.embedLogo
+            ? const QrEmbeddedImageStyle(
+                size: Size(24, 24),
+              )
+            : null,
+        eyeStyle: QrEyeStyle(
+          eyeShape:
+              options.roundedModules ? QrEyeShape.circle : QrEyeShape.square,
+          color: foregroundColor,
+        ),
+        dataModuleStyle: QrDataModuleStyle(
+          dataModuleShape: options.roundedModules
+              ? QrDataModuleShape.circle
+              : QrDataModuleShape.square,
+          color: foregroundColor,
+        ),
       ),
     );
   }

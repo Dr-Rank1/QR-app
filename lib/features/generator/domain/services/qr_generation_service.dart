@@ -11,12 +11,32 @@ class QrRenderOptions {
   final double size;
   final bool embedLogo;
   final bool roundedModules;
+  final Color foregroundColor;
+  final Color backgroundColor;
 
   const QrRenderOptions({
     this.size = 200,
     this.embedLogo = false,
     this.roundedModules = false,
+    this.foregroundColor = Colors.black,
+    this.backgroundColor = Colors.white,
   });
+
+  QrRenderOptions copyWith({
+    double? size,
+    bool? embedLogo,
+    bool? roundedModules,
+    Color? foregroundColor,
+    Color? backgroundColor,
+  }) {
+    return QrRenderOptions(
+      size: size ?? this.size,
+      embedLogo: embedLogo ?? this.embedLogo,
+      roundedModules: roundedModules ?? this.roundedModules,
+      foregroundColor: foregroundColor ?? this.foregroundColor,
+      backgroundColor: backgroundColor ?? this.backgroundColor,
+    );
+  }
 
   @override
   bool operator ==(Object other) {
@@ -24,11 +44,19 @@ class QrRenderOptions {
         other is QrRenderOptions &&
             other.size == size &&
             other.embedLogo == embedLogo &&
-            other.roundedModules == roundedModules;
+            other.roundedModules == roundedModules &&
+            other.foregroundColor == foregroundColor &&
+            other.backgroundColor == backgroundColor;
   }
 
   @override
-  int get hashCode => Object.hash(size, embedLogo, roundedModules);
+  int get hashCode => Object.hash(
+        size,
+        embedLogo,
+        roundedModules,
+        foregroundColor,
+        backgroundColor,
+      );
 }
 
 /// Renders QR codes off the main widget tree for sharing and previews.
@@ -82,14 +110,14 @@ class QrPreviewImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Colors.white,
+      color: options.backgroundColor,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: QrImageView(
           data: data,
           version: QrVersions.auto,
           size: options.size,
-          backgroundColor: Colors.white,
+          backgroundColor: options.backgroundColor,
           embeddedImage: options.embedLogo
               ? const AssetImage('assets/app_icon.png')
               : null,
@@ -102,13 +130,13 @@ class QrPreviewImage extends StatelessWidget {
             eyeShape: options.roundedModules
                 ? QrEyeShape.circle
                 : QrEyeShape.square,
-            color: Colors.black,
+            color: options.foregroundColor,
           ),
           dataModuleStyle: QrDataModuleStyle(
             dataModuleShape: options.roundedModules
                 ? QrDataModuleShape.circle
                 : QrDataModuleShape.square,
-            color: Colors.black,
+            color: options.foregroundColor,
           ),
         ),
       ),
