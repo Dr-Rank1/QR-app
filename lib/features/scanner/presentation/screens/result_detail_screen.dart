@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/app_spacing.dart';
@@ -10,12 +9,14 @@ import '../../../../app/navigation_provider.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../domain/enums/qr_result_type.dart';
 import '../../domain/models/qr_result.dart';
+import '../../../../shared/utils/qr_content_actions.dart';
 import '../../../../shared/utils/qr_parser.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
 import '../../../../shared/utils/url_safety.dart';
 import '../../../../shared/security/sensitive_metadata.dart';
 import '../../../../shared/utils/app_haptics.dart';
 import '../../../../app/theme.dart';
+import '../../../../shared/services/service_providers.dart';
 import '../../../../shared/widgets/app_icons.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/theme_mode_toggle.dart';
@@ -94,6 +95,15 @@ class _ResultDetailContent extends ConsumerWidget {
               await ref
                   .read(scanHistoryProvider.notifier)
                   .toggleFavorite(result.id);
+            },
+          ),
+          IconButton(
+            icon: const Icon(AppIcons.share),
+            tooltip: 'Share',
+            onPressed: () async {
+              await ref
+                  .read(shareServiceProvider)
+                  .shareText(result.formattedValue);
             },
           ),
           const ThemeModeToggle(),
@@ -336,21 +346,46 @@ class _ActionButtons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasPrimary = _hasPrimaryAction(result.type);
+    final hasPrimary = QRContentActions.hasPrimary(result.type);
+    final secondary = QRContentActions.secondaryActions(result);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (hasPrimary)
           FilledButton.icon(
-            onPressed: () => _primaryAction(context),
-            icon: Icon(_primaryIcon(result.type)),
-            label: Text(_primaryLabel(result.type).toUpperCase()),
+            onPressed: () => _primaryAction(context, ref),
+            icon: Icon(QRContentActions.primaryIcon(result.type)),
+            label: Text(
+              QRContentActions.primaryLabel(
+                result.type,
+                metadata: result.metadata,
+              ).toUpperCase(),
+            ),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.zero,
+              ),
             ),
           ),
+        if (secondary.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < secondary.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _runSecondary(context, secondary[i]),
+                    icon: Icon(secondary[i].icon, size: 18),
+                    label: Text(secondary[i].label.toUpperCase()),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
         const SizedBox(height: 12),
         Row(
           children: [
@@ -363,7 +398,7 @@ class _ActionButtons extends ConsumerWidget {
             const SizedBox(width: 8),
             Expanded(
               child: OutlinedButton(
-                onPressed: () => _share(context),
+                onPressed: () => _share(context, ref),
                 child: const Text('SHARE'),
               ),
             ),
@@ -388,98 +423,50 @@ class _ActionButtons extends ConsumerWidget {
     );
   }
 
-  bool _hasPrimaryAction(QRResultType type) {
-    return type == QRResultType.url ||
-        type == QRResultType.wifi ||
-        type == QRResultType.phone ||
-        type == QRResultType.email ||
-        type == QRResultType.sms ||
-        type == QRResultType.geo;
-  }
-
-  IconData _primaryIcon(QRResultType type) {
-    switch (type) {
-      case QRResultType.url:
-        return AppIcons.openExternal;
-      case QRResultType.wifi:
-        return Icons.wifi_outlined;
-      case QRResultType.phone:
-        return Icons.phone_outlined;
-      case QRResultType.email:
-        return Icons.email_outlined;
-      case QRResultType.sms:
-        return Icons.sms_outlined;
-      case QRResultType.geo:
-        return Icons.map_outlined;
-      default:
-        return AppIcons.openExternal;
-    }
-  }
-
-  String _primaryLabel(QRResultType type) {
-    switch (type) {
-      case QRResultType.url:
-        return 'Open Link';
-      case QRResultType.wifi:
-        return 'Connect to Wi-Fi';
-      case QRResultType.phone:
-        return 'Call Number';
-      case QRResultType.email:
-        return 'Open Email';
-      case QRResultType.sms:
-        return 'Send SMS';
-      case QRResultType.geo:
-        return 'Open in Maps';
-      default:
-        return 'Open';
-    }
-  }
-
-  Future<void> _primaryAction(BuildContext context) async {
-    if (result.type == QRResultType.wifi) {
-      await _copyWifiDetails(context);
-      if (context.mounted) {
-        AppSnackBar.showSuccess(
-          context,
-          'Wi-Fi details copied — open Settings to connect',
-        );
+  Future<void> _primaryAction(BuildContext context, WidgetRef ref) async {
+    final outcome = await QRContentActions.runPrimary(
+      context,
+      result,
+      shareService: ref.read(shareServiceProvider),
+    );
+    if (!context.mounted || outcome.silent) return;
+    if (outcome.success) {
+      if (outcome.message != null) {
+        AppSnackBar.showSuccess(context, outcome.message!);
       }
-      return;
+    } else if (outcome.message != null) {
+      AppSnackBar.showError(context, outcome.message!);
     }
+  }
 
+  Future<void> _runSecondary(
+    BuildContext context,
+    QRSecondaryAction action,
+  ) async {
     final success = await QRContentParser.tryOpen(
-      result.type,
-      result.rawValue,
-      result.metadata,
+      action.type,
+      action.value,
+      action.metadata,
       context: context,
     );
-
     if (!success && context.mounted) {
-      AppSnackBar.showError(context, 'Could not open this content');
+      AppSnackBar.showError(context, 'Could not open ${action.label}');
     }
   }
 
   Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: result.rawValue));
+    final text = result.type == QRResultType.wifi
+        ? QRContentActions.wifiCredentials(result.metadata)
+        : result.rawValue;
+    await Clipboard.setData(ClipboardData(text: text));
     await AppHaptics.light();
     if (context.mounted) {
       AppSnackBar.showSuccess(context, 'Copied to clipboard');
     }
   }
 
-  Future<void> _copyWifiDetails(BuildContext context) async {
-    final meta = result.metadata;
-    final buffer = StringBuffer()
-      ..writeln('Network: ${meta?['ssid'] ?? 'Unknown'}')
-      ..writeln('Password: ${meta?['password'] ?? ''}')
-      ..writeln('Security: ${meta?['encryption'] ?? 'WPA'}');
-    await Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
-  }
-
-  Future<void> _share(BuildContext context) async {
-    await SharePlus.instance.share(
-      ShareParams(text: result.formattedValue, subject: 'QR Scan Result'),
-    );
+  Future<void> _share(BuildContext context, WidgetRef ref) async {
+    await ref.read(shareServiceProvider).shareText(result.formattedValue);
   }
 
   Future<void> _webSearch(BuildContext context) async {

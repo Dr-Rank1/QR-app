@@ -39,9 +39,30 @@ void main() {
       expect(result.metadata?['lat'], '37.7749');
     });
 
-    test('falls back to text', () {
-      final result = QRContentParser.parse('Hello world');
-      expect(result.type, QRResultType.text);
+    test('detects vCard', () {
+      const payload = '''BEGIN:VCARD
+VERSION:3.0
+FN:Jane Doe
+TEL:+1234567890
+EMAIL:jane@example.com
+END:VCARD''';
+      final result = QRContentParser.parse(payload);
+      expect(result.type, QRResultType.vcard);
+      expect(result.metadata?['name'], 'Jane Doe');
+      expect(result.metadata?['phone'], '+1234567890');
+      expect(result.metadata?['email'], 'jane@example.com');
+    });
+
+    test('detects calendar event', () {
+      const payload = '''BEGIN:VEVENT
+SUMMARY:Team Sync
+DTSTART:20260712T100000
+LOCATION:HQ
+END:VEVENT''';
+      final result = QRContentParser.parse(payload);
+      expect(result.type, QRResultType.calendar);
+      expect(result.metadata?['title'], 'Team Sync');
+      expect(result.metadata?['location'], 'HQ');
     });
   });
 

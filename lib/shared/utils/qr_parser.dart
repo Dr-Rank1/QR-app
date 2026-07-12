@@ -175,6 +175,24 @@ class QRContentParser {
     return metadata.isEmpty ? null : metadata;
   }
 
+  /// Whether [tryOpen] can launch an external action for this type.
+  /// Wi-Fi is actionable via copy-credentials UX, not [tryOpen].
+  static bool canLaunch(QRResultType type) {
+    switch (type) {
+      case QRResultType.url:
+      case QRResultType.phone:
+      case QRResultType.email:
+      case QRResultType.sms:
+      case QRResultType.geo:
+        return true;
+      case QRResultType.wifi:
+      case QRResultType.vcard:
+      case QRResultType.calendar:
+      case QRResultType.text:
+        return false;
+    }
+  }
+
   static Future<bool> tryOpen(
     QRResultType type,
     String value,
@@ -214,9 +232,26 @@ class QRContentParser {
 
       case QRResultType.geo:
         if (metadata?['lat'] != null && metadata?['lng'] != null) {
-          return launchUrl(Uri.parse('geo:${metadata!['lat']},${metadata['lng']}'));
+          return launchUrl(
+            Uri.parse('geo:${metadata!['lat']},${metadata['lng']}'),
+          );
         }
-        return launchUrl(Uri.parse(value));
+        if (metadata?['url'] != null) {
+          final query = Uri.encodeComponent(metadata!['url']!);
+          return launchUrl(
+            Uri.parse('https://maps.google.com/maps?q=$query'),
+            mode: LaunchMode.externalApplication,
+          );
+        }
+        if (value.toLowerCase().startsWith('geo:')) {
+          return launchUrl(Uri.parse(value));
+        }
+        return launchUrl(
+          Uri.parse(
+            'https://maps.google.com/maps?q=${Uri.encodeComponent(value)}',
+          ),
+          mode: LaunchMode.externalApplication,
+        );
 
       case QRResultType.wifi:
       case QRResultType.vcard:

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/scanner/presentation/screens/scanner_screen.dart';
 import '../features/generator/presentation/screens/generator_screen.dart';
 import '../features/history/presentation/screens/enhanced_history_screen.dart';
+import '../features/analytics/presentation/screens/my_qrs_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../shared/widgets/tab_crossfade_stack.dart';
 import 'navigation_provider.dart';
@@ -16,6 +17,7 @@ class MainShell extends ConsumerWidget {
     (label: 'Scan', semanticsLabel: 'Scanner tab'),
     (label: 'Generate', semanticsLabel: 'Generator tab'),
     (label: 'History', semanticsLabel: 'History tab'),
+    (label: 'My QRs', semanticsLabel: 'My QRs analytics tab'),
     (label: 'Settings', semanticsLabel: 'Settings tab'),
   ];
 
@@ -23,6 +25,7 @@ class MainShell extends ConsumerWidget {
     ScannerScreen(),
     GeneratorScreen(),
     EnhancedHistoryScreen(),
+    MyQrsScreen(),
     SettingsScreen(),
   ];
 
@@ -99,9 +102,11 @@ class _MonoNavItem extends StatelessWidget {
           children: [
             Text(
               label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTheme.monoLabel(
                 context,
-                size: 11,
+                size: 9,
                 color: selected
                     ? colorScheme.onSurface
                     : colorScheme.onSurfaceVariant,

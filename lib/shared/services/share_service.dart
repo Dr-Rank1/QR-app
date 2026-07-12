@@ -47,4 +47,72 @@ class ShareService {
     final file = await writeTempPng(pngBytes);
     await sharePngFile(file, subject: subject);
   }
+
+  Future<File> writeTempSvg(String svg) async {
+    return _writeTempTextFile(contents: svg, extension: 'svg');
+  }
+
+  Future<void> shareSvg(String svg, {String subject = 'QR Code'}) async {
+    final file = await writeTempSvg(svg);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile(file.path, mimeType: 'image/svg+xml', name: 'qr_code.svg'),
+        ],
+        subject: subject,
+        text: subject,
+      ),
+    );
+  }
+
+  Future<File> _writeTempTextFile({
+    required String contents,
+    required String extension,
+  }) async {
+    final tempRoot = await getTemporaryDirectory();
+    final cacheDir = Directory('${tempRoot.path}/$_cacheFolderName');
+    if (!await cacheDir.exists()) {
+      await cacheDir.create(recursive: true);
+    }
+
+    final file = File(
+      '${cacheDir.path}/qr_${DateTime.now().millisecondsSinceEpoch}.$extension',
+    );
+    await file.writeAsString(contents, flush: true);
+    return file;
+  }
+
+  Future<void> shareContactCard(String vcardPayload) async {
+    var payload = vcardPayload.trim();
+    if (!payload.toUpperCase().contains('BEGIN:VCARD')) {
+      payload = 'BEGIN:VCARD\nVERSION:3.0\nFN:Contact\nEND:VCARD';
+    }
+    final file = await _writeTempTextFile(contents: payload, extension: 'vcf');
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile(file.path, mimeType: 'text/vcard', name: 'contact.vcf'),
+        ],
+        subject: 'Contact',
+      ),
+    );
+  }
+
+  Future<void> shareCalendarEvent(String eventPayload) async {
+    var payload = eventPayload.trim();
+    if (!payload.toUpperCase().contains('BEGIN:VCALENDAR')) {
+      if (payload.toUpperCase().contains('BEGIN:VEVENT')) {
+        payload = 'BEGIN:VCALENDAR\nVERSION:2.0\n$payload\nEND:VCALENDAR';
+      }
+    }
+    final file = await _writeTempTextFile(contents: payload, extension: 'ics');
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile(file.path, mimeType: 'text/calendar', name: 'event.ics'),
+        ],
+        subject: 'Calendar event',
+      ),
+    );
+  }
 }

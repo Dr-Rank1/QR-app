@@ -48,6 +48,8 @@ dependencies:
 
   qr_flutter: ^4.1.0
 
+  qr: ^3.0.2
+
   screenshot: ^3.0.0
 
   wakelock_plus: ^1.6.1
@@ -59,6 +61,8 @@ dependencies:
   image: ^4.5.4
 
   google_fonts: ^6.2.1
+
+  http: ^1.2.2
 
 
 

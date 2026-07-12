@@ -10,11 +10,15 @@ import '../../../../app/router.dart';
 import '../../../../app/theme.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
+import '../../domain/models/qr_result.dart';
+import '../../domain/enums/qr_result_type.dart';
 import '../../domain/services/camera_scan_service.dart';
 import '../../domain/services/gallery_scan_service.dart';
 import '../providers/scanner_provider.dart';
 import '../../../../shared/security/secure_logger.dart';
+import '../../../../shared/utils/app_haptics.dart';
 import '../../../../shared/utils/permission_handler.dart';
+import '../../../../shared/utils/qr_type_ui.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/scan_overlay.dart';
 
@@ -34,6 +38,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   bool _permissionChecked = false;
   bool _permissionPermanentlyDenied = false;
   bool _isGalleryScanning = false;
+  bool _batchMode = false;
+  final List<QRResult> _batchQueue = [];
+  final Set<String> _batchSeenRaw = {};
+  double _zoomScale = 0.0;
+  double _baseZoomScale = 0.0;
   _ScanMode _scanMode = _ScanMode.live;
   DateTime? _lastScanAt;
 
@@ -103,7 +112,29 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   bool _shouldIgnoreScan() {
     final last = _lastScanAt;
     if (last == null) return false;
-    return DateTime.now().difference(last) < const Duration(seconds: 2);
+    final cooldown = _batchMode
+        ? const Duration(milliseconds: 1200)
+        : const Duration(seconds: 2);
+    return DateTime.now().difference(last) < cooldown;
+  }
+
+  void _toggleBatchMode() {
+    setState(() {
+      _batchMode = !_batchMode;
+      if (!_batchMode) {
+        _batchQueue.clear();
+        _batchSeenRaw.clear();
+      }
+    });
+    AppHaptics.light();
+    if (mounted) {
+      AppSnackBar.showInfo(
+        context,
+        _batchMode
+            ? 'Batch mode on — keep scanning to build a queue'
+            : 'Batch mode off',
+      );
+    }
   }
 
   Future<void> _processScan(String code, {bool fromGallery = false}) async {
@@ -112,6 +143,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     _lastScanAt = DateTime.now();
 
     try {
+      if (_batchMode && _batchSeenRaw.contains(code)) {
+        if (mounted) {
+          AppSnackBar.showInfo(context, 'Already in this batch');
+        }
+        return;
+      }
+
       final settings = ref.read(settingsProvider);
       final result = await ref
           .read(scannerProvider.notifier)
@@ -131,6 +169,19 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       }
 
       ref.invalidate(scanHistoryProvider);
+
+      if (_batchMode) {
+        setState(() {
+          _batchQueue.insert(0, result);
+          _batchSeenRaw.add(code);
+        });
+        AppSnackBar.showSuccess(
+          context,
+          'Added · ${_batchQueue.length} in queue',
+        );
+        return;
+      }
+
       await context.push(AppRoutes.resultDetailPath(result.id));
     } catch (error, stackTrace) {
       SecureLogger.logError(error, stackTrace);
@@ -146,6 +197,137 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
         ref.read(scannerProvider.notifier).clearLastScan();
       }
     }
+  }
+
+  Future<void> _setZoom(double value) async {
+    final clamped = value.clamp(0.0, 1.0);
+    if ((clamped - _zoomScale).abs() < 0.005) return;
+    setState(() => _zoomScale = clamped);
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      await controller.setZoomScale(clamped);
+    } catch (_) {
+      // Some platforms may not support zoom; ignore quietly.
+    }
+  }
+
+  void _onScaleStart(ScaleStartDetails details) {
+    _baseZoomScale = _zoomScale;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    // Pinch scale is multiplicative; map into 0..1 camera zoom range.
+    final next = (_baseZoomScale + (details.scale - 1) * 0.55).clamp(0.0, 1.0);
+    _setZoom(next);
+  }
+
+  Future<void> _showBatchQueue() async {
+    if (_batchQueue.isEmpty) {
+      AppSnackBar.showInfo(context, 'Scan codes to fill the batch queue');
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final colorScheme = Theme.of(sheetContext).colorScheme;
+        return SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * 0.55,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'BATCH QUEUE',
+                          style: AppTheme.monoLabel(
+                            sheetContext,
+                            size: 11,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${_batchQueue.length}',
+                        style: AppTheme.monoLabel(
+                          sheetContext,
+                          size: 11,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _batchQueue.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final scan = _batchQueue[index];
+                      return ListTile(
+                        leading: Container(
+                          width: 3,
+                          height: 28,
+                          color: scan.type.color,
+                        ),
+                        title: Text(
+                          scan.formattedValue,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          scan.type.displayName.toUpperCase(),
+                          style: AppTheme.monoLabel(context, size: 9),
+                        ),
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          context.push(AppRoutes.resultDetailPath(scan.id));
+                        },
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _batchQueue.clear();
+                              _batchSeenRaw.clear();
+                            });
+                            Navigator.of(sheetContext).pop();
+                          },
+                          child: const Text('CLEAR'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          child: const Text('KEEP SCANNING'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
@@ -246,6 +428,21 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             ),
           ),
           actions: [
+            TextButton(
+              onPressed: controlsLocked ? null : _toggleBatchMode,
+              child: Text(
+                _batchMode ? 'BATCH ON' : 'BATCH',
+                style: AppTheme.monoLabel(
+                  context,
+                  size: 11,
+                  color: _batchMode
+                      ? colorScheme.onSurface
+                      : (controlsLocked
+                          ? colorScheme.onSurfaceVariant.withValues(alpha: 0.4)
+                          : colorScheme.onSurfaceVariant),
+                ),
+              ),
+            ),
             if (scannerState.hasCameraPermission && _scanMode == _ScanMode.live)
               TextButton(
                 onPressed: torchEnabled ? _toggleTorch : null,
@@ -275,7 +472,15 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                       Expanded(
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            return Stack(
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onScaleStart: _scanMode == _ScanMode.live
+                                  ? _onScaleStart
+                                  : null,
+                              onScaleUpdate: _scanMode == _ScanMode.live
+                                  ? _onScaleUpdate
+                                  : null,
+                              child: Stack(
                               fit: StackFit.expand,
                               children: [
                                 if (_scanMode == _ScanMode.live &&
@@ -337,6 +542,16 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                                     scanLineColor: Colors.white,
                                     detected: isProcessing,
                                   ),
+                                if (_scanMode == _ScanMode.live)
+                                  Positioned(
+                                    left: 20,
+                                    right: 20,
+                                    bottom: 16,
+                                    child: _ZoomControls(
+                                      zoomScale: _zoomScale,
+                                      onChanged: _setZoom,
+                                    ),
+                                  ),
                                 if (isProcessing || _isGalleryScanning)
                                   ColoredBox(
                                     color: Colors.black54,
@@ -383,6 +598,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                                     ),
                                   ),
                               ],
+                            ),
                             );
                           },
                         ),
@@ -401,13 +617,34 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                               onModeChanged: _onModeChanged,
                             ),
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'AWAITING SCAN',
-                                  style: AppTheme.monoLabel(context),
-                                ),
+                              padding: const EdgeInsets.fromLTRB(20, 0, 12, 14),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _batchMode
+                                          ? (_batchQueue.isEmpty
+                                              ? 'BATCH · AWAITING SCANS'
+                                              : 'BATCH · ${_batchQueue.length} QUEUED')
+                                          : 'AWAITING SCAN',
+                                      style: AppTheme.monoLabel(context),
+                                    ),
+                                  ),
+                                  if (_batchMode)
+                                    TextButton(
+                                      onPressed: _showBatchQueue,
+                                      child: Text(
+                                        _batchQueue.isEmpty
+                                            ? 'QUEUE'
+                                            : 'REVIEW (${_batchQueue.length})',
+                                        style: AppTheme.monoLabel(
+                                          context,
+                                          size: 11,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ],
@@ -415,6 +652,64 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                       ),
                     ],
                   ),
+      ),
+    );
+  }
+}
+
+class _ZoomControls extends StatelessWidget {
+  final double zoomScale;
+  final ValueChanged<double> onChanged;
+
+  const _ZoomControls({
+    required this.zoomScale,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        child: Row(
+          children: [
+            Text(
+              'ZOOM',
+              style: AppTheme.monoLabel(
+                context,
+                size: 9,
+                color: Colors.white70,
+              ),
+            ),
+            Expanded(
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 2,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                ),
+                child: Slider(
+                  value: zoomScale.clamp(0.0, 1.0),
+                  onChanged: onChanged,
+                  activeColor: Colors.white,
+                  inactiveColor: Colors.white24,
+                ),
+              ),
+            ),
+            Text(
+              '${(zoomScale * 100).round()}%',
+              style: AppTheme.monoLabel(
+                context,
+                size: 9,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
