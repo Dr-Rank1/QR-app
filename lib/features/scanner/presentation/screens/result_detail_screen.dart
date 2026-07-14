@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +11,7 @@ import '../../../../app/navigation_provider.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../domain/enums/qr_result_type.dart';
 import '../../domain/models/qr_result.dart';
+import '../../../../shared/ads/ads_provider.dart';
 import '../../../../shared/utils/qr_content_actions.dart';
 import '../../../../shared/utils/qr_parser.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
@@ -58,6 +61,13 @@ class ResultDetailScreen extends ConsumerWidget {
   }
 }
 
+Future<void> _exitResultScreen(BuildContext context, WidgetRef ref) async {
+  await ref.read(adsServiceProvider).maybeShowInterstitialOnResultExit();
+  if (!context.mounted) return;
+  ref.read(selectedTabIndexProvider.notifier).state = 0;
+  context.pop();
+}
+
 class _ResultDetailContent extends ConsumerWidget {
   final QRResult result;
 
@@ -67,15 +77,18 @@ class _ResultDetailContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        unawaited(_exitResultScreen(context, ref));
+      },
+      child: Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(AppIcons.close),
           tooltip: 'Back to Scanner',
-          onPressed: () {
-            ref.read(selectedTabIndexProvider.notifier).state = 0;
-            context.pop();
-          },
+          onPressed: () => unawaited(_exitResultScreen(context, ref)),
         ),
         title: Text(
           'RESULT',
@@ -148,6 +161,7 @@ class _ResultDetailContent extends ConsumerWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

@@ -8,7 +8,6 @@ import '../../../../shared/services/service_providers.dart';
 import '../../../../shared/utils/app_haptics.dart';
 import '../../../../shared/widgets/app_icons.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
-import '../../../../shared/widgets/theme_mode_toggle.dart';
 import '../../../generator/domain/qr_payload_builder.dart';
 import '../../../generator/domain/services/qr_generation_service.dart';
 import '../providers/generated_qr_provider.dart';
@@ -23,100 +22,108 @@ class MyQrsScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'MY QRS',
-          style: AppTheme.monoLabel(context, size: 11, weight: FontWeight.w700),
-        ),
-        actions: [
-          const ThemeModeToggle(),
-          if (items.isNotEmpty)
-            IconButton(
-              tooltip: 'Clear all',
-              icon: const Icon(AppIcons.clear),
-              onPressed: () async {
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Clear My QRs?'),
-                    content: const Text(
-                      'Removes locally saved generated codes. Scan counts are placeholders until Pro analytics connects.',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
+      body: items.isEmpty
+          ? _EmptyState()
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenHorizontal,
+                    12,
+                    AppSpacing.screenHorizontal,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${items.length} SAVED',
+                          style: AppTheme.monoLabel(context, size: 10),
+                        ),
                       ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Clear'),
+                      TextButton(
+                        onPressed: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Clear My QRs?'),
+                              content: const Text(
+                                'Removes locally saved generated codes.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Clear'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true) {
+                            await ref.read(generatedQrProvider.notifier).clear();
+                          }
+                        },
+                        child: Text(
+                          'CLEAR ALL',
+                          style: AppTheme.monoLabel(
+                            context,
+                            size: 10,
+                            color: colorScheme.error,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                );
-                if (confirmed == true) {
-                  await ref.read(generatedQrProvider.notifier).clear();
-                }
-              },
-            ),
-        ],
-      ),
-      body: items.isEmpty
-          ? _EmptyState()
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screenHorizontal,
-                12,
-                AppSpacing.screenHorizontal,
-                24,
-              ),
-              itemCount: items.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: colorScheme.outline),
-                      color: colorScheme.surfaceContainer,
+                ),
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenHorizontal,
+                      12,
+                      AppSpacing.screenHorizontal,
+                      24,
                     ),
-                    child: Text(
-                      'Scan counts are placeholders for a future Pro analytics backend.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            height: 1.35,
-                          ),
-                    ),
-                  );
-                }
-
-                final item = items[index - 1];
-                return _GeneratedQrTile(
-                  item: item,
-                  onShare: () async {
-                    final png = await ref
-                        .read(qrGenerationServiceProvider)
-                        .renderQrPng(
-                          item.payload,
-                          options: QrRenderOptions(
-                            size: 280,
-                            foregroundColor: item.fg,
-                            backgroundColor: item.bg,
-                          ),
-                        );
-                    await ref.read(shareServiceProvider).shareQrImage(png);
-                    await AppHaptics.success();
-                  },
-                  onDelete: () async {
-                    await ref
-                        .read(generatedQrProvider.notifier)
-                        .delete(item.id);
-                    if (context.mounted) {
-                      AppSnackBar.showInfo(context, 'Removed from My QRs');
-                    }
-                  },
-                );
-              },
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return _GeneratedQrTile(
+                        item: item,
+                        onShare: () async {
+                          final png = await ref
+                              .read(qrGenerationServiceProvider)
+                              .renderQrPng(
+                                item.payload,
+                                options: QrRenderOptions(
+                                  size: 280,
+                                  foregroundColor: item.fg,
+                                  backgroundColor: item.bg,
+                                ),
+                              );
+                          await ref
+                              .read(shareServiceProvider)
+                              .shareQrImage(png);
+                          await AppHaptics.success();
+                        },
+                        onDelete: () async {
+                          await ref
+                              .read(generatedQrProvider.notifier)
+                              .delete(item.id);
+                          if (context.mounted) {
+                            AppSnackBar.showInfo(
+                              context,
+                              'Removed from My QRs',
+                            );
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -137,7 +144,7 @@ class _EmptyState extends StatelessWidget {
             Icon(Icons.insights_outlined, size: 56, color: muted),
             const SizedBox(height: 24),
             Text(
-              'NO GENERATED QRS YET',
+              'EMPTY',
               style: AppTheme.monoLabel(
                 context,
                 size: 11,
@@ -147,7 +154,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Save or share a code from Generate to track it here.',
+              'Generate a QR code and tap “Save to My QRs”.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: muted,

@@ -33,7 +33,9 @@
   @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# Strip logging in release
+# Start.io
+-keep class com.startapp.** { *; }
+-dontwarn com.startapp.**
 -assumenosideeffects class android.util.Log {
   public static *** d(...);
   public static *** v(...);

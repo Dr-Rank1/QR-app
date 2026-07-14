@@ -6,6 +6,8 @@ enum GeneratorContentType {
   email,
   sms,
   contact,
+  location,
+  event,
 }
 
 extension GeneratorContentTypeX on GeneratorContentType {
@@ -14,7 +16,7 @@ extension GeneratorContentTypeX on GeneratorContentType {
       case GeneratorContentType.text:
         return 'Text';
       case GeneratorContentType.url:
-        return 'Link';
+        return 'URL';
       case GeneratorContentType.wifi:
         return 'Wi-Fi';
       case GeneratorContentType.phone:
@@ -25,8 +27,24 @@ extension GeneratorContentTypeX on GeneratorContentType {
         return 'SMS';
       case GeneratorContentType.contact:
         return 'Contact';
+      case GeneratorContentType.location:
+        return 'Location';
+      case GeneratorContentType.event:
+        return 'Event';
     }
   }
+
+  /// Types shown in the generator type grid (matches UI reference order).
+  static const studioTypes = <GeneratorContentType>[
+    GeneratorContentType.url,
+    GeneratorContentType.email,
+    GeneratorContentType.phone,
+    GeneratorContentType.sms,
+    GeneratorContentType.contact,
+    GeneratorContentType.wifi,
+    GeneratorContentType.location,
+    GeneratorContentType.event,
+  ];
 }
 
 class QRPayloadBuilder {
@@ -51,6 +69,10 @@ class QRPayloadBuilder {
         return {'number': '', 'message': ''};
       case GeneratorContentType.contact:
         return {'name': '', 'phone': '', 'email': '', 'organization': ''};
+      case GeneratorContentType.location:
+        return {'coords': ''};
+      case GeneratorContentType.event:
+        return {'title': ''};
     }
   }
 
@@ -86,6 +108,12 @@ class QRPayloadBuilder {
         return 'sms:$number?body=$message';
       case GeneratorContentType.contact:
         return _buildVcard(fields);
+      case GeneratorContentType.location:
+        final coords = fields['coords']?.trim() ?? '';
+        if (coords.isEmpty) return '';
+        return coords.toLowerCase().startsWith('geo:') ? coords : 'geo:$coords';
+      case GeneratorContentType.event:
+        return fields['title']?.trim() ?? '';
     }
   }
 
@@ -148,12 +176,27 @@ class QRPayloadBuilder {
         if (ssid.isEmpty && (fields['password']?.trim().isNotEmpty ?? false)) {
           errors['ssid'] = 'Network name is required';
         }
+      case GeneratorContentType.location:
+        final coords = fields['coords']?.trim() ?? '';
+        if (coords.isNotEmpty && !_isValidGeo(coords)) {
+          errors['coords'] = 'Use lat,lng (e.g. 37.77,-122.42)';
+        }
       case GeneratorContentType.text:
       case GeneratorContentType.contact:
+      case GeneratorContentType.event:
         break;
     }
 
     return errors;
+  }
+
+  static bool _isValidGeo(String raw) {
+    final value =
+        raw.toLowerCase().startsWith('geo:') ? raw.substring(4) : raw;
+    final parts = value.split(',');
+    if (parts.length < 2) return false;
+    return double.tryParse(parts[0].trim()) != null &&
+        double.tryParse(parts[1].trim()) != null;
   }
 
   static String? _urlFieldError(String? raw) {
@@ -161,7 +204,9 @@ class QRPayloadBuilder {
     if (value.isEmpty || value == 'https://' || value == 'http://') {
       return null;
     }
-    return _isValidUrl(value) ? null : 'Enter a valid URL (e.g. https://example.com)';
+    return _isValidUrl(value)
+        ? null
+        : 'Enter a valid URL (e.g. https://example.com)';
   }
 
   static String? _emailFieldError(String? raw) {

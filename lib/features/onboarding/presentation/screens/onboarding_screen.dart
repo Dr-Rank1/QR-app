@@ -19,25 +19,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   static const _pages = [
     _OnboardingPage(
-      step: '01',
+      step: '01 / 03',
       icon: Icons.qr_code_scanner_outlined,
-      title: 'Scan',
+      title: 'Scan anything',
       description:
-          'Point the camera at any code — or pull from your gallery. Batch mode keeps you scanning without leaving the viewfinder.',
+          'Point your camera at any QR code. Smart detection identifies the type and offers the right action.',
     ),
     _OnboardingPage(
-      step: '02',
+      step: '02 / 03',
       icon: Icons.qr_code_outlined,
-      title: 'Generate',
+      title: 'Generate & customize',
       description:
-          'Build links, Wi-Fi, contacts, and more. Shorten long URLs and export print-ready SVG or PNG.',
+          'Build QR codes for 8 content types. Pick colors, apply your logo, save PNG or SVG.',
     ),
     _OnboardingPage(
-      step: '03',
-      icon: Icons.palette_outlined,
-      title: 'Customize',
+      step: '03 / 03',
+      icon: Icons.inventory_2_outlined,
+      title: 'History & My QRs',
       description:
-          'Drop a logo in the center, save color presets, and track generated codes in My QRs.',
+          'Every scan is saved to History. Generated codes live in My QRs for quick reuse.',
     ),
   ];
 
@@ -115,19 +115,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   const SizedBox(height: 28),
                   if (_currentPage < _pages.length - 1)
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: () {
-                          _pageController.nextPage(
-                            duration: reduceMotion
-                                ? Duration.zero
-                                : const Duration(milliseconds: 350),
-                            curve: Curves.easeOutCubic,
-                          );
-                        },
-                        child: Text('NEXT · ${page.title}'.toUpperCase()),
-                      ),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: _completeOnboarding,
+                          child: Text(
+                            'SKIP',
+                            style: AppTheme.monoLabel(context, size: 11),
+                          ),
+                        ),
+                        const Spacer(),
+                        FilledButton(
+                          onPressed: () {
+                            _pageController.nextPage(
+                              duration: reduceMotion
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 350),
+                              curve: Curves.easeOutCubic,
+                            );
+                          },
+                          child: Text('NEXT · ${page.title}'.toUpperCase()),
+                        ),
+                      ],
                     )
                   else
                     SizedBox(
@@ -179,63 +188,39 @@ class _OnboardingPageView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.92, end: 1),
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 420),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value.clamp(0.0, 1.0),
-                child: Transform.translate(
-                  offset: Offset(0, (1 - value) * 16),
-                  child: child,
-                ),
-              );
-            },
-            child: Column(
-              children: [
-                Text(
-                  page.step,
-                  style: AppTheme.monoLabel(
-                    context,
-                    size: 12,
-                    weight: FontWeight.w700,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: colorScheme.outline),
-                    color: colorScheme.surfaceContainer,
-                  ),
-                  child: Icon(
-                    page.icon,
-                    size: 56,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 36),
-                Text(
-                  page.title.toUpperCase(),
-                  style: AppTheme.displayTitle(context, size: 36),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  page.description,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.45,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+          Text(
+            page.step,
+            style: AppTheme.monoLabel(
+              context,
+              size: 12,
+              weight: FontWeight.w700,
+              color: colorScheme.onSurface,
             ),
+          ),
+          const SizedBox(height: 28),
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              border: Border.all(color: colorScheme.outline),
+              color: colorScheme.surfaceContainer,
+            ),
+            child: Icon(page.icon, size: 56, color: colorScheme.onSurface),
+          ),
+          const SizedBox(height: 36),
+          Text(
+            page.title.toUpperCase(),
+            style: AppTheme.displayTitle(context, size: 32),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            page.description,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.45,
+                ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

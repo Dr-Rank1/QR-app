@@ -14,6 +14,7 @@ import 'features/scanner/domain/models/qr_result.dart';
 import 'features/settings/presentation/providers/settings_provider.dart';
 import 'shared/security/secure_logger.dart';
 import 'shared/services/crash_reporter.dart';
+import 'shared/ads/ads_bootstrap.dart';
 import 'shared/services/deep_link_listener.dart';
 
 Future<void> main() async {
@@ -94,8 +95,9 @@ class QRScannerApp extends ConsumerWidget {
       ),
     );
 
-    return DeepLinkListener(
-      child: MaterialApp.router(
+    return AdsBootstrap(
+      child: DeepLinkListener(
+        child: MaterialApp.router(
         scaffoldMessengerKey: rootScaffoldMessengerKey,
         title: 'QR Vault',
         debugShowCheckedModeBanner: false,
@@ -105,6 +107,7 @@ class QRScannerApp extends ConsumerWidget {
         themeAnimationDuration: const Duration(milliseconds: 380),
         themeAnimationCurve: Curves.easeInOutCubic,
         routerConfig: router,
+        ),
       ),
     );
   }

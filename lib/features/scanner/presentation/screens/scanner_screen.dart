@@ -418,47 +418,6 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: colorScheme.surface,
-        appBar: AppBar(
-          title: Text(
-            'SCANNER',
-            style: AppTheme.monoLabel(
-              context,
-              size: 12,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: controlsLocked ? null : _toggleBatchMode,
-              child: Text(
-                _batchMode ? 'BATCH ON' : 'BATCH',
-                style: AppTheme.monoLabel(
-                  context,
-                  size: 11,
-                  color: _batchMode
-                      ? colorScheme.onSurface
-                      : (controlsLocked
-                          ? colorScheme.onSurfaceVariant.withValues(alpha: 0.4)
-                          : colorScheme.onSurfaceVariant),
-                ),
-              ),
-            ),
-            if (scannerState.hasCameraPermission && _scanMode == _ScanMode.live)
-              TextButton(
-                onPressed: torchEnabled ? _toggleTorch : null,
-                child: Text(
-                  scannerState.isTorchOn ? 'FLASH ON' : 'FLASH',
-                  style: AppTheme.monoLabel(
-                    context,
-                    size: 11,
-                    color: torchEnabled
-                        ? colorScheme.onSurface
-                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-              ),
-          ],
-        ),
         body: !_permissionChecked
             ? const Center(child: CircularProgressIndicator())
             : !scannerState.hasCameraPermission
@@ -469,6 +428,56 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                   )
                 : Column(
                     children: [
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: colorScheme.outline),
+                          ),
+                        ),
+                        child: SizedBox(
+                          height: 44,
+                          child: Row(
+                            children: [
+                              const Spacer(),
+                              TextButton(
+                                onPressed:
+                                    controlsLocked ? null : _toggleBatchMode,
+                                child: Text(
+                                  _batchMode ? 'BATCH ON' : 'BATCH',
+                                  style: AppTheme.monoLabel(
+                                    context,
+                                    size: 11,
+                                    color: _batchMode
+                                        ? colorScheme.onSurface
+                                        : (controlsLocked
+                                            ? colorScheme.onSurfaceVariant
+                                                .withValues(alpha: 0.4)
+                                            : colorScheme.onSurfaceVariant),
+                                  ),
+                                ),
+                              ),
+                              if (scannerState.hasCameraPermission &&
+                                  _scanMode == _ScanMode.live)
+                                TextButton(
+                                  onPressed: torchEnabled ? _toggleTorch : null,
+                                  child: Text(
+                                    scannerState.isTorchOn
+                                        ? 'FLASH ON'
+                                        : 'FLASH',
+                                    style: AppTheme.monoLabel(
+                                      context,
+                                      size: 11,
+                                      color: torchEnabled
+                                          ? colorScheme.onSurface
+                                          : colorScheme.onSurfaceVariant
+                                              .withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                       Expanded(
                         child: LayoutBuilder(
                           builder: (context, constraints) {

@@ -14,4 +14,8 @@ class OnboardingStorage {
   Future<void> markCompleted() async {
     await _box.put(_key, true);
   }
+
+  Future<void> reset() async {
+    await _box.put(_key, false);
+  }
 }

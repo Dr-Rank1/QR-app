@@ -8,13 +8,15 @@ import 'package:screenshot/screenshot.dart';
 
 import '../../../../app/app_spacing.dart';
 import '../../../../app/theme.dart';
+import '../../../../shared/ads/ads_constants.dart';
+import '../../../../shared/ads/ads_reward_dialog.dart';
 import '../../../../shared/services/service_providers.dart';
 import '../../../../shared/utils/app_haptics.dart';
 import '../../../../shared/utils/permission_handler.dart';
 import '../../../../shared/widgets/app_icons.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
-import '../../../../shared/widgets/theme_mode_toggle.dart';
 import '../../../analytics/presentation/providers/generated_qr_provider.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../domain/qr_payload_builder.dart';
 import '../../domain/services/qr_generation_service.dart';
 import '../providers/generator_provider.dart';
@@ -34,6 +36,8 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
   Uint8List? _logoBytes;
   final bool _roundedModules = false;
   bool _isShortening = false;
+  bool _logoFeatureUnlocked = false;
+  bool _premiumTemplatesUnlocked = false;
   Color _foregroundColor = Colors.black;
   Color _backgroundColor = Colors.white;
 
@@ -82,13 +86,15 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
   Future<void> _persistGenerated(String payload) async {
     final state = ref.read(generatorProvider);
     final title = switch (state.type) {
-      GeneratorContentType.url => state.fields['url'] ?? 'Link',
+      GeneratorContentType.url => state.fields['url'] ?? 'URL',
       GeneratorContentType.text => state.fields['message'] ?? 'Text',
       GeneratorContentType.wifi => state.fields['ssid'] ?? 'Wi-Fi',
       GeneratorContentType.phone => state.fields['number'] ?? 'Phone',
       GeneratorContentType.email => state.fields['to'] ?? 'Email',
       GeneratorContentType.sms => state.fields['number'] ?? 'SMS',
       GeneratorContentType.contact => state.fields['name'] ?? 'Contact',
+      GeneratorContentType.location => state.fields['coords'] ?? 'Location',
+      GeneratorContentType.event => state.fields['title'] ?? 'Event',
     };
     await ref.read(generatedQrProvider.notifier).add(
           title: title,
@@ -97,6 +103,51 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
           foreground: _foregroundColor,
           background: _backgroundColor,
         );
+  }
+
+  Future<bool> _ensureLogoUnlocked() async {
+    if (_logoFeatureUnlocked) return true;
+    final unlocked = await requestRewardedFeature(
+      context,
+      ref,
+      feature: RewardedFeature.logoEmbed,
+      title: 'Unlock logo overlay',
+      message:
+          'Watch a short video to embed a logo in the center of your QR code.',
+    );
+    if (unlocked && mounted) {
+      setState(() => _logoFeatureUnlocked = true);
+    }
+    return unlocked;
+  }
+
+  Future<bool> _ensurePremiumTemplatesUnlocked() async {
+    if (_premiumTemplatesUnlocked) return true;
+    final unlocked = await requestRewardedFeature(
+      context,
+      ref,
+      feature: RewardedFeature.premiumTemplate,
+      title: 'Unlock color templates',
+      message:
+          'Watch a short video to unlock Ocean, Bloom, Forest, and Solar templates.',
+    );
+    if (unlocked && mounted) {
+      setState(() => _premiumTemplatesUnlocked = true);
+    }
+    return unlocked;
+  }
+
+  Future<void> _shareSvgWithReward(String payload) async {
+    if (payload.trim().isEmpty) return;
+    final unlocked = await requestRewardedFeature(
+      context,
+      ref,
+      feature: RewardedFeature.svgExport,
+      title: 'Export SVG',
+      message: 'Watch a short video to export your QR code as SVG.',
+    );
+    if (!unlocked || !mounted) return;
+    await _shareSvg(payload);
   }
 
   Future<void> _shareSvg(String payload) async {
@@ -137,6 +188,8 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
   }
 
   Future<void> _pickLogo() async {
+    if (!await _ensureLogoUnlocked()) return;
+
     final permission = await AppPermissionHandler.ensureGalleryPermission();
     if (!mounted) return;
     if (permission != PermissionRequestResult.granted) {
@@ -258,6 +311,15 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
       return;
     }
 
+    final unlocked = await requestRewardedFeature(
+      context,
+      ref,
+      feature: RewardedFeature.urlShortener,
+      title: 'Shorten URL',
+      message: 'Watch a short video to shorten this link before encoding.',
+    );
+    if (!unlocked || !mounted) return;
+
     setState(() => _isShortening = true);
     try {
       final short = await ref.read(urlShortenerServiceProvider).shorten(url);
@@ -306,17 +368,6 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('QR Studio'),
-        actions: [
-          IconButton(
-            tooltip: 'Share PNG',
-            onPressed: hasQrCode ? () => _shareImage(payload) : null,
-            icon: const Icon(AppIcons.share),
-          ),
-          const ThemeModeToggle(),
-        ],
-      ),
       body: Column(
         children: [
           _QrPreviewBand(
@@ -346,6 +397,23 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                   onSelected: notifier.setType,
                 ),
                 const SizedBox(height: 24),
+                Text('TEMPLATES', style: AppTheme.monoLabel(context)),
+                const SizedBox(height: 8),
+                _BuiltInTemplatesStrip(
+                  onApply: (name, fg, bg) async {
+                    if (AdsConstants.premiumTemplateNames.contains(name) &&
+                        !await _ensurePremiumTemplatesUnlocked()) {
+                      return;
+                    }
+                    if (!mounted) return;
+                    setState(() {
+                      _foregroundColor = fg;
+                      _backgroundColor = bg;
+                    });
+                    await AppHaptics.light();
+                  },
+                ),
+                const SizedBox(height: 16),
                 Text('PRESETS', style: AppTheme.monoLabel(context)),
                 const SizedBox(height: 8),
                 _PresetStrip(
@@ -368,7 +436,8 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                   controllers: _fieldControllers,
                   onChanged: notifier.updateField,
                 ),
-                if (state.type == GeneratorContentType.url) ...[
+                if (state.type == GeneratorContentType.url &&
+                    ref.watch(settingsProvider).urlShortenerEnabled) ...[
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -390,7 +459,8 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                   Text(
                     'Long links create dense QRs. Shorten before encoding.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
                 ],
@@ -417,14 +487,18 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                   enabled: _embedLogo,
                   hasCustomLogo: _logoBytes != null,
                   logoBytes: _logoBytes,
-                  onToggle: (value) {
+                  onToggle: (value) async {
+                    if (value && !await _ensureLogoUnlocked()) return;
+                    if (!mounted) return;
                     setState(() {
                       _embedLogo = value;
                       if (!value) _logoBytes = null;
                     });
                   },
                   onPickLogo: _pickLogo,
-                  onUseAppIcon: () {
+                  onUseAppIcon: () async {
+                    if (!await _ensureLogoUnlocked()) return;
+                    if (!mounted) return;
                     setState(() {
                       _embedLogo = true;
                       _logoBytes = null;
@@ -451,7 +525,7 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                       if (!context.mounted) return;
                       AppSnackBar.showSuccess(context, 'Saved to My QRs');
                     } : null,
-                    child: const Text('SAVE'),
+                    child: const Text('SAVE PNG'),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -466,8 +540,26 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: hasQrCode ? () => _shareSvg(payload) : null,
-                    child: const Text('EXPORT SVG'),
+                    onPressed: hasQrCode ? () => _shareSvgWithReward(payload) : null,
+                    child: const Text('SAVE SVG'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: hasQrCode
+                        ? () async {
+                            await _persistGenerated(payload);
+                            await AppHaptics.success();
+                            if (!context.mounted) return;
+                            AppSnackBar.showSuccess(
+                              context,
+                              'Saved to My QRs',
+                            );
+                          }
+                        : null,
+                    child: const Text('SAVE TO MY QRS'),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -507,6 +599,10 @@ class _QrPreviewBand extends StatelessWidget {
         return const Color(0xFFec4899);
       case GeneratorContentType.wifi:
         return const Color(0xFF06b6d4);
+      case GeneratorContentType.location:
+        return const Color(0xFFef4444);
+      case GeneratorContentType.event:
+        return const Color(0xFF8b5cf6);
       case GeneratorContentType.text:
         return const Color(0xFF737373);
     }
@@ -558,6 +654,10 @@ class _TypeGrid extends StatelessWidget {
         return Icons.sms_outlined;
       case GeneratorContentType.contact:
         return Icons.contact_page_outlined;
+      case GeneratorContentType.location:
+        return Icons.location_on_outlined;
+      case GeneratorContentType.event:
+        return Icons.event_outlined;
     }
   }
 
@@ -575,6 +675,10 @@ class _TypeGrid extends StatelessWidget {
         return const Color(0xFFec4899);
       case GeneratorContentType.wifi:
         return const Color(0xFF06b6d4);
+      case GeneratorContentType.location:
+        return const Color(0xFFef4444);
+      case GeneratorContentType.event:
+        return const Color(0xFF8b5cf6);
       case GeneratorContentType.text:
         return const Color(0xFF737373);
     }
@@ -583,25 +687,29 @@ class _TypeGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final types = GeneratorContentType.values;
+    final types = GeneratorContentTypeX.studioTypes;
 
     return Container(
       color: colorScheme.outline,
-      child: Row(
-        children: [
-          for (int i = 0; i < types.length; i++) ...[
-            if (i > 0) SizedBox(width: 1),
-            Expanded(
-              child: _TypeCell(
-                type: types[i],
-                isSelected: selected == types[i],
-                icon: _iconFor(types[i]),
-                color: _colorFor(types[i]),
-                onTap: () => onSelected(types[i]),
-              ),
-            ),
-          ],
-        ],
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: types.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          mainAxisSpacing: 1,
+          crossAxisSpacing: 1,
+          childAspectRatio: 1.35,
+        ),
+        itemBuilder: (context, i) {
+          return _TypeCell(
+            type: types[i],
+            isSelected: selected == types[i],
+            icon: _iconFor(types[i]),
+            color: _colorFor(types[i]),
+            onTap: () => onSelected(types[i]),
+          );
+        },
       ),
     );
   }
@@ -1036,6 +1144,72 @@ class _PresetCard extends StatelessWidget {
   }
 }
 
+class _BuiltInTemplatesStrip extends StatelessWidget {
+  final Future<void> Function(String name, Color fg, Color bg) onApply;
+
+  const _BuiltInTemplatesStrip({required this.onApply});
+
+  static const _templates = <({String name, Color fg, Color bg})>[
+    (name: 'Classic', fg: Color(0xFF000000), bg: Color(0xFFFFFFFF)),
+    (name: 'Night', fg: Color(0xFFFFFFFF), bg: Color(0xFF0A0A0A)),
+    (name: 'Ocean', fg: Color(0xFF06B6D4), bg: Color(0xFF0D1B2A)),
+    (name: 'Bloom', fg: Color(0xFFEC4899), bg: Color(0xFFFFF0F6)),
+    (name: 'Forest', fg: Color(0xFF22C55E), bg: Color(0xFF0A1F0A)),
+    (name: 'Solar', fg: Color(0xFFEAB308), bg: Color(0xFF1A1200)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      height: 72,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _templates.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final t = _templates[index];
+          return InkWell(
+            onTap: () => onApply(t.name, t.fg, t.bg),
+            child: Container(
+              width: 88,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                border: Border.all(color: colorScheme.outline),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(width: 14, height: 14, color: t.fg),
+                      const SizedBox(width: 4),
+                      Container(
+                        width: 14,
+                        height: 14,
+                        color: t.bg,
+                        foregroundDecoration: BoxDecoration(
+                          border: Border.all(color: colorScheme.outline),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text(
+                    t.name.toUpperCase(),
+                    style: AppTheme.monoLabel(context, size: 8),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _LogoOverlayControls extends StatelessWidget {
   final bool enabled;
   final bool hasCustomLogo;
@@ -1232,6 +1406,15 @@ class _ContentForm extends StatelessWidget {
             _field(context, 'email', 'Email', keyboard: TextInputType.emailAddress),
           ],
         );
+      case GeneratorContentType.location:
+        return _field(
+          context,
+          'coords',
+          'Latitude, longitude',
+          keyboard: TextInputType.text,
+        );
+      case GeneratorContentType.event:
+        return _field(context, 'title', 'Event title');
     }
   }
 

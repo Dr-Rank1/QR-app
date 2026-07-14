@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../features/scanner/presentation/screens/result_detail_screen.dart';
+import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../shared/services/onboarding_storage.dart';
 import 'main_shell.dart';
@@ -11,6 +12,7 @@ import 'main_shell.dart';
 class AppRoutes {
   static const onboarding = '/onboarding';
   static const scanner = '/';
+  static const settings = '/settings';
   static const resultDetail = '/result/:id';
 
   static String resultDetailPath(String id) => '/result/$id';
@@ -52,6 +54,24 @@ Page<void> _slideUpPage({
   );
 }
 
+Page<void> _slideFromRightPage({
+  required LocalKey key,
+  required Widget child,
+}) {
+  return CustomTransitionPage(
+    key: key,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final offsetAnimation = Tween<Offset>(
+        begin: const Offset(1, 0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+
+      return SlideTransition(position: offsetAnimation, child: child);
+    },
+  );
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -71,6 +91,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _fadePage(
           key: state.pageKey,
           child: const MainShell(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        name: 'settings',
+        pageBuilder: (context, state) => _slideFromRightPage(
+          key: state.pageKey,
+          child: const SettingsScreen(),
         ),
       ),
       GoRoute(

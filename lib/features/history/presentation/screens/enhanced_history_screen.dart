@@ -12,7 +12,6 @@ import '../../../../shared/utils/qr_parser.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
 import '../../../../shared/widgets/app_icons.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
-import '../../../../shared/widgets/theme_mode_toggle.dart';
 import '../../../scanner/domain/enums/qr_result_type.dart';
 import '../../../scanner/domain/models/qr_result.dart';
 import '../providers/history_provider.dart';
@@ -56,54 +55,67 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'HISTORY',
-          style: AppTheme.monoLabel(context, size: 11, weight: FontWeight.w700),
-        ),
-        actions: [
-          const ThemeModeToggle(),
-          PopupMenuButton<_HistoryMenuAction>(
-            tooltip: 'More',
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-            onSelected: (action) {
-              switch (action) {
-                case _HistoryMenuAction.export:
-                  _exportHistory();
-                case _HistoryMenuAction.clearAll:
-                  _showClearConfirmation(context, ref);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: _HistoryMenuAction.export,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(AppIcons.export, size: 22),
-                  title: Text('Export'),
-                ),
-              ),
-              PopupMenuItem(
-                value: _HistoryMenuAction.clearAll,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    AppIcons.delete,
-                    size: 22,
-                    color: colorScheme.error,
-                  ),
-                  title: Text(
-                    'Clear all',
-                    style: TextStyle(color: colorScheme.error),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenHorizontal,
+              8,
+              4,
+              0,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    historyAsync.valueOrNull == null
+                        ? ''
+                        : '${historyAsync.valueOrNull!.length} TOTAL',
+                    style: AppTheme.monoLabel(context, size: 10),
+                  ),
+                ),
+                PopupMenuButton<_HistoryMenuAction>(
+                  tooltip: 'More',
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
+                  onSelected: (action) {
+                    switch (action) {
+                      case _HistoryMenuAction.export:
+                        _exportHistory();
+                      case _HistoryMenuAction.clearAll:
+                        _showClearConfirmation(context, ref);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: _HistoryMenuAction.export,
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(AppIcons.export, size: 22),
+                        title: Text('Export'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _HistoryMenuAction.clearAll,
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          AppIcons.delete,
+                          size: 22,
+                          color: colorScheme.error,
+                        ),
+                        title: Text(
+                          'Clear all',
+                          style: TextStyle(color: colorScheme.error),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.screenHorizontal,
@@ -342,7 +354,7 @@ class _VaultEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              isSearching ? 'NO MATCHES' : 'VAULT IS EMPTY',
+              isSearching ? 'NO MATCHES' : 'EMPTY',
               style: AppTheme.monoLabel(
                 context,
                 size: 11,
@@ -353,7 +365,7 @@ class _VaultEmptyState extends StatelessWidget {
             if (!isSearching) ...[
               const SizedBox(height: 8),
               Text(
-                'Scanned codes will appear here',
+                'No scans yet. Open the scanner to get started.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: muted,

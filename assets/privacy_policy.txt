@@ -1,42 +1,42 @@
-# QR Vault Privacy Policy
+# QR Studio Privacy Policy
 
-Last Updated: 2024
+Last Updated: July 2026
 
 ## Data Collection
 
-QR Vault respects your privacy. Here's what we collect:
+QR Studio respects your privacy. Here's what we collect:
 
 ### Local Data (Stored Only on Your Device)
-- **Scan History**: QR codes you scan are stored locally using Hive database. This data never leaves your device unless you explicitly export or sync to cloud.
+- **Scan History**: QR codes you scan are stored locally using Hive database. This data never leaves your device unless you explicitly export or share it.
+- **Generated QRs**: Codes you create are saved locally in My QRs.
 - **Settings**: Your preferences (theme, sound, vibration) are stored locally.
-- **App Usage**: Anonymous analytics to improve the app.
-
-### Cloud Sync (Optional)
-- If you enable cloud sync, your scan history is uploaded to Firebase Cloud Storage.
-- Data is associated with an anonymous account ID.
-- You can delete your cloud data anytime by clearing app data.
 
 ### Camera Access
-- QR Vault requires camera access to scan QR codes.
+- QR Studio requires camera access to scan QR codes.
 - We do not take photos or record video.
 - Camera frames are processed locally and discarded immediately.
+
+### Advertising
+- This app displays ads through **Start.io** (StartApp).
+- Start.io may collect device identifiers, IP address, ad interaction data, and similar technical data to serve and measure ads.
+- You can learn more at [Start.io Privacy Policy](https://www.start.io/policy/).
 
 ## Data Usage
 
 We use collected data to:
 - Provide QR scanning and generation features
 - Save your scan history for reference
-- Enable optional cloud backup
+- Display and measure in-app advertising
 
 ## Data Sharing
 
-We do NOT sell, trade, or share your personal data with third parties.
+- Scan history and generated QR content stay on your device unless you export or share them.
+- Advertising data may be shared with Start.io and its ad partners to deliver ads.
 
 ## Your Rights
 
-- **Delete Data**: Clear all local data from Settings > About > Clear History
-- **Disable Cloud Sync**: Turn off sync in Settings
-- **Withdraw Consent**: Uninstall the app removes all local data
+- **Delete Data**: Clear scan history or My QRs from Settings
+- **Withdraw Consent**: Uninstalling the app removes all local data
 
 ## Contact
 
@@ -44,4 +44,4 @@ For privacy concerns, contact: privacy@example.com
 
 ## Children's Privacy
 
-QR Vault is not intended for children under 13. We do not knowingly collect data from children.
+QR Studio is not intended for children under 13. We do not knowingly collect data from children.

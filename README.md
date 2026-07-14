@@ -17,7 +17,7 @@ flutter run
 - Live camera + gallery QR scanning
 - QR generation (text, URL, Wi-Fi, phone, email, SMS, contact)
 - Local scan history (50 items max), search, filters, export
-- Dark Material 3 UI, no ads, no account required
+- Dark Material 3 UI, no account required
 - Fully offline storage via Hive
 
 ## Test & analyze

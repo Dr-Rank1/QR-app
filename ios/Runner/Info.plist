@@ -64,5 +64,11 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>com.startapp.sdk.APPLICATION_ID</key>
+		<string>206402880</string>
+		<key>com.startapp.sdk.RETURN_ADS_ENABLED</key>
+		<false/>
+		<key>com.startapp.sdk.SPLASH_ADS_ENABLED</key>
+		<false/>
 	</dict>
 </plist>

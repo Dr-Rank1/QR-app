@@ -6,12 +6,15 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../app/app_spacing.dart';
 import '../../../../app/app_info.dart';
 import '../../../../app/theme.dart';
+import '../../../../shared/ads/ads_constants.dart';
+import '../../../../shared/ads/startapp_banner_slot.dart';
 import '../../../../shared/services/crash_reporter.dart';
+import '../../../../shared/services/service_providers.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
 import '../../../../shared/widgets/app_icons.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/theme_mode_selector.dart';
-import '../../../../shared/widgets/theme_mode_toggle.dart';
+import '../../../analytics/presentation/providers/generated_qr_provider.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../../scanner/domain/enums/qr_result_type.dart';
 import '../providers/settings_provider.dart';
@@ -25,23 +28,50 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Navigator.of(context).canPop()
+            ? TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  '← BACK',
+                  style: AppTheme.monoLabel(context, size: 11),
+                ),
+              )
+            : null,
+        leadingWidth: 88,
         title: Text(
           'SETTINGS',
           style: AppTheme.monoLabel(context, size: 11, weight: FontWeight.w700),
         ),
-        actions: const [ThemeModeToggle()],
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
         children: [
-          const _SettingsSectionHeader(label: 'Scanning'),
+          const _SettingsSectionHeader(label: 'Appearance'),
+          const SizedBox(height: 8),
+          _SettingsCard(
+            children: const [
+              _ThemeModeHeader(),
+              ThemeModeSelector(),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          const _SettingsSectionHeader(label: 'Scanner'),
           const SizedBox(height: 8),
           _SettingsCard(
             children: [
               _SettingsToggleTile(
+                icon: Icons.open_in_new,
+                title: 'Auto-open URLs',
+                subtitle: 'Open detected links automatically after scan',
+                value: settings.autoOpenUrls,
+                onChanged: (value) {
+                  ref.read(settingsProvider.notifier).setAutoOpenUrls(value);
+                },
+              ),
+              _SettingsToggleTile(
                 icon: Icons.vibration_outlined,
-                title: 'Vibrate on Scan',
-                subtitle: 'Haptic feedback when a code is detected',
+                title: 'Haptic feedback',
+                subtitle: 'Vibrate when a code is detected',
                 value: settings.vibrateOnScan,
                 onChanged: (value) {
                   ref.read(settingsProvider.notifier).setVibrateOnScan(value);
@@ -68,12 +98,21 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sectionGap),
-          const _SettingsSectionHeader(label: 'Appearance'),
+          const _SettingsSectionHeader(label: 'Generator'),
           const SizedBox(height: 8),
           _SettingsCard(
-            children: const [
-              _ThemeModeHeader(),
-              ThemeModeSelector(),
+            children: [
+              _SettingsToggleTile(
+                icon: Icons.link_outlined,
+                title: 'URL shortener',
+                subtitle: 'Shorten long URLs before encoding',
+                value: settings.urlShortenerEnabled,
+                onChanged: (value) {
+                  ref
+                      .read(settingsProvider.notifier)
+                      .setUrlShortenerEnabled(value);
+                },
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sectionGap),
@@ -83,9 +122,29 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               _DestructiveSettingsTile(
                 icon: Icons.delete_forever_outlined,
-                title: 'Clear Scan History',
+                title: 'Clear scan history',
                 subtitle: 'Permanently remove all saved scans from this device',
                 onTap: () => _confirmClearHistory(context, ref),
+              ),
+              _DestructiveSettingsTile(
+                icon: Icons.qr_code_outlined,
+                title: 'Clear My QRs',
+                subtitle: 'Remove all saved generated codes',
+                onTap: () => _confirmClearMyQrs(context, ref),
+              ),
+              _SettingsNavTile(
+                icon: Icons.restart_alt_outlined,
+                title: 'Replay onboarding',
+                subtitle: 'Show the intro flow again on next launch',
+                onTap: () async {
+                  await ref.read(onboardingStorageProvider).reset();
+                  if (context.mounted) {
+                    AppSnackBar.showSuccess(
+                      context,
+                      'Onboarding will show next launch',
+                    );
+                  }
+                },
               ),
             ],
           ),
@@ -143,11 +202,39 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 32),
+          const StartAppBannerSlot(adTag: AdsConstants.bannerSettings),
+          const SizedBox(height: 16),
           _BrandFooter(),
           const SizedBox(height: 16),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmClearMyQrs(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear My QRs?'),
+        content: const Text('Removes all saved generated codes.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(generatedQrProvider.notifier).clear();
+      if (context.mounted) {
+        AppSnackBar.showSuccess(context, 'My QRs cleared');
+      }
+    }
   }
 
   Future<void> _confirmClearHistory(BuildContext context, WidgetRef ref) async {

@@ -6,12 +6,16 @@ class SettingsState {
   final bool vibrateOnScan;
   final bool soundOnScan;
   final bool keepScreenOn;
+  final bool autoOpenUrls;
+  final bool urlShortenerEnabled;
   final ThemeMode themeMode;
 
   const SettingsState({
     this.vibrateOnScan = true,
     this.soundOnScan = true,
     this.keepScreenOn = true,
+    this.autoOpenUrls = false,
+    this.urlShortenerEnabled = false,
     this.themeMode = ThemeMode.system,
   });
 
@@ -21,12 +25,16 @@ class SettingsState {
     bool? vibrateOnScan,
     bool? soundOnScan,
     bool? keepScreenOn,
+    bool? autoOpenUrls,
+    bool? urlShortenerEnabled,
     ThemeMode? themeMode,
   }) {
     return SettingsState(
       vibrateOnScan: vibrateOnScan ?? this.vibrateOnScan,
       soundOnScan: soundOnScan ?? this.soundOnScan,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
+      autoOpenUrls: autoOpenUrls ?? this.autoOpenUrls,
+      urlShortenerEnabled: urlShortenerEnabled ?? this.urlShortenerEnabled,
       themeMode: themeMode ?? this.themeMode,
     );
   }
@@ -53,6 +61,8 @@ class SettingsStateNotifier extends StateNotifier<SettingsState> {
       vibrateOnScan: box.get('vibrateOnScan', defaultValue: true),
       soundOnScan: box.get('soundOnScan', defaultValue: true),
       keepScreenOn: box.get('keepScreenOn', defaultValue: true),
+      autoOpenUrls: box.get('autoOpenUrls', defaultValue: false),
+      urlShortenerEnabled: box.get('urlShortenerEnabled', defaultValue: false),
       themeMode: themeMode,
     );
   }
@@ -84,6 +94,16 @@ class SettingsStateNotifier extends StateNotifier<SettingsState> {
   void setKeepScreenOn(bool value) {
     _box.put('keepScreenOn', value);
     state = state.copyWith(keepScreenOn: value);
+  }
+
+  void setAutoOpenUrls(bool value) {
+    _box.put('autoOpenUrls', value);
+    state = state.copyWith(autoOpenUrls: value);
+  }
+
+  void setUrlShortenerEnabled(bool value) {
+    _box.put('urlShortenerEnabled', value);
+    state = state.copyWith(urlShortenerEnabled: value);
   }
 }
 
