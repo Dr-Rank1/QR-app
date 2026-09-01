@@ -70,8 +70,7 @@ flutter {
     source = "../.."
 }
 
-// Start.io inapp-sdk 5.3.2 declares compileSdk 37; AGP 8.9.1 tops out at 36.
-// Safe to skip the AAR metadata gate so release builds can proceed.
+// Start.io SDK needs compileSdk 37; skip AAR metadata check on AGP 8.9.
 tasks.matching { it.name.contains("check") && it.name.contains("AarMetadata") }.configureEach {
     enabled = false
 }

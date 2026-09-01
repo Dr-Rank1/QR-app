@@ -1,66 +1,66 @@
-### IntelliJ IDEA ###
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-.kotlin
-
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.swp
+*.iml
+.idea/
 .vscode/
 
-### Flutter / Dart ###
+# --- Flutter / Dart ---
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+.pub-cache/
+.pub/
 build/
+coverage/
+*.symbols
+*.map.json
 
-### IntelliJ IDEA ###
-.idea/
-*.iml
-
-### Android ###
+# --- Android ---
 android/local.properties
 android/.gradle/
+android/captures/
+android/key.properties
+android/app/key.jks
+android/signing-credentials.local.txt
 
-### Mac OS ###
-.DS_Store
+# --- iOS (also see ios/.gitignore) ---
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*
 
-### Android Keystore ###
+# --- Secrets & signing ---
 key.properties
 *.jks
 *.p12
-android/signing-credentials.local.txt
 *.pem
+upload_certificate.pem
 
-### Local build artifacts & analysis dumps ###
+# --- Local build outputs (never commit) ---
 *.apk
 *.aab
 *.apks
 aab_extract/
 apk*_extract/
 apk_unzip/
+
+# --- Local-only scratch / archives ---
 tools/
+_ui_ref/
 assets/icon-options/
 qr_vault_app_icon.png
-_ui_ref/
 QR Code Scanner App.zip
-upload_certificate.pem
+
+# --- Play Store marketing assets (keep locally if needed) ---
+store_listing/

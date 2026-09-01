@@ -1,10 +1,8 @@
 # QR Vault
 
-A local-first Flutter QR scanner and generator for Android and iOS.
+Flutter QR scanner and generator for Android and iOS.
 
-**Full technical documentation:** see [APP_DESCRIPTION.md](APP_DESCRIPTION.md) for architecture, UI, data model, security, and build details.
-
-## Quick start
+## Setup
 
 ```bash
 flutter pub get
@@ -14,19 +12,30 @@ flutter run
 
 ## Features
 
-- Live camera + gallery QR scanning
-- QR generation (text, URL, Wi-Fi, phone, email, SMS, contact)
-- Local scan history (50 items max), search, filters, export
-- Dark Material 3 UI, no account required
-- Fully offline storage via Hive
+- Camera and gallery scanning
+- QR generation (text, URL, Wi-Fi, phone, email, SMS, vCard)
+- Scan history with search and export
+- Dark/light themes
+- Offline storage (Hive)
+- Deep links: `qrvault://`
 
-## Test & analyze
+## Tests
 
 ```bash
 flutter analyze
 flutter test
 ```
 
+## Android release
+
+```bash
+flutter build appbundle
+```
+
+Output: `build/app/outputs/bundle/release/app-release.aab`
+
+Windows: `scripts/build_release_aab.ps1`
+
 ## License
 
-MIT License
+MIT
