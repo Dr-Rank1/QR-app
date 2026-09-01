@@ -21,23 +21,13 @@ class OpenScannerDeepLink extends DeepLinkAction {
   const OpenScannerDeepLink();
 }
 
-/// Parses custom scheme and app-specific HTTPS links.
+/// Parses custom-scheme deep links (`qrvault://`).
 class DeepLinkService {
   static const customScheme = 'qrvault';
-  static const httpsHost = 'scan.qrvault.app';
 
   static DeepLinkAction? parse(Uri uri) {
-    final normalized = uri.normalizePath();
-
-    if (uri.scheme == customScheme) {
-      return _parseCustomScheme(normalized);
-    }
-
-    if (uri.scheme == 'https' && uri.host == httpsHost) {
-      return _parseHttpsLink(normalized);
-    }
-
-    return null;
+    if (uri.scheme != customScheme) return null;
+    return _parseCustomScheme(uri.normalizePath());
   }
 
   static DeepLinkAction? _parseCustomScheme(Uri uri) {
@@ -67,17 +57,6 @@ class DeepLinkService {
     }
 
     return null;
-  }
-
-  static DeepLinkAction? _parseHttpsLink(Uri uri) {
-    final data = uri.queryParameters['data'] ?? uri.queryParameters['payload'];
-    if (data == null || data.isEmpty) return const OpenScannerDeepLink();
-
-    if (uri.path.startsWith('/generate')) {
-      return GenerateDeepLink(Uri.decodeComponent(data));
-    }
-
-    return ScanDeepLink(Uri.decodeComponent(data));
   }
 
   static Uri buildScanLink(String payload) {

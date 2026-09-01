@@ -14,7 +14,7 @@ import '../../features/settings/presentation/providers/settings_provider.dart';
 import '../security/payload_sanitizer.dart';
 import 'deep_link_service.dart';
 
-/// Listens for platform deep links (`qrvault://` and HTTPS app links).
+/// Listens for platform deep links (`qrvault://`).
 class DeepLinkListener extends ConsumerStatefulWidget {
   final Widget child;
 

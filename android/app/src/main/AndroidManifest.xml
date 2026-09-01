@@ -55,17 +55,6 @@
                 <data android:scheme="qrvault" android:host="open" />
             </intent-filter>
 
-            <!-- HTTPS app link (optional verified domain) -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="https"
-                    android:host="scan.qrvault.app"
-                    android:pathPrefix="/" />
-            </intent-filter>
-
             <!-- Receive plain-text shares from other apps -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
