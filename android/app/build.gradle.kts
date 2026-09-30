@@ -69,8 +69,3 @@ android {
 flutter {
     source = "../.."
 }
-
-// Start.io SDK needs compileSdk 37; skip AAR metadata check on AGP 8.9.
-tasks.matching { it.name.contains("check") && it.name.contains("AarMetadata") }.configureEach {
-    enabled = false
-}

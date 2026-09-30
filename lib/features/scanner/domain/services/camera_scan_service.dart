@@ -73,6 +73,18 @@ class CameraScanService {
     _controller = null;
   }
 
+  Future<void> pause() async {
+    try {
+      await _controller?.stop();
+    } catch (_) {}
+  }
+
+  Future<void> resume() async {
+    try {
+      await _controller?.start();
+    } catch (_) {}
+  }
+
   Future<void> toggleTorch() async {
     final controller = _controller;
     if (controller == null) return;

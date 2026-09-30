@@ -30,6 +30,13 @@ void main() {
       final result = PayloadSanitizer.sanitizeRaw('<script>alert(1)</script>');
       expect(result.isBlocked, isTrue);
     });
+
+    test('allows multi-line payloads and vcards containing URLs', () {
+      const vcard = 'BEGIN:VCARD\nVERSION:3.0\nFN:Jane\nURL:https://example.com\nEND:VCARD';
+      final result = PayloadSanitizer.sanitizeRaw(vcard);
+      expect(result.isAllowed, isTrue);
+      expect(result.value, vcard);
+    });
   });
 
   group('SensitiveMetadata', () {

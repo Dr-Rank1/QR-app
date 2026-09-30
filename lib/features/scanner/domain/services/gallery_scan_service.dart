@@ -59,7 +59,7 @@ class GalleryScanService {
       }
 
       SecureLogger.log('GalleryScan: picked ${picked.path} (${picked.name})');
-      return decodeFromXFile(picked);
+      return await decodeFromXFile(picked);
     } catch (error, stackTrace) {
       SecureLogger.logError(error, stackTrace);
       return GalleryScanFailure('Could not open gallery. Please try again.', error);
@@ -67,6 +67,7 @@ class GalleryScanService {
   }
 
   Future<GalleryScanOutcome> decodeFromXFile(XFile file) async {
+    final createdTempPaths = <String>[];
     try {
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty) {
@@ -84,6 +85,7 @@ class GalleryScanService {
       }
 
       final rawTempPath = await _writeRawBytes(bytes, file.name);
+      createdTempPaths.add(rawTempPath);
       SecureLogger.log('GalleryScan: raw temp file at $rawTempPath');
 
       final rawPayload = await _decodeAllStrategies(
@@ -128,6 +130,7 @@ class GalleryScanService {
           maxDimension: attempt.maxDimension,
           label: attempt.label,
         );
+        createdTempPaths.add(preparedPath);
         SecureLogger.log('GalleryScan: analyzing ${attempt.label} image');
 
         final payload = await _decodeAllStrategies(
@@ -147,6 +150,15 @@ class GalleryScanService {
         'Could not read image. Please try another photo.',
         error,
       );
+    } finally {
+      for (final path in createdTempPaths) {
+        try {
+          final tempFile = File(path);
+          if (tempFile.existsSync()) {
+            await tempFile.delete();
+          }
+        } catch (_) {}
+      }
     }
   }
 

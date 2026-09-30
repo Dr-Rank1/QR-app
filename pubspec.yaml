@@ -64,7 +64,7 @@ dependencies:
 
   http: ^1.2.2
 
-  startapp_sdk: ^1.0.1
+  unity_ads_plugin: ^0.5.0
 
 
 

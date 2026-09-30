@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../../app/navigation_provider.dart';
 import '../../../../app/app_spacing.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme.dart';
@@ -31,7 +32,8 @@ class ScannerScreen extends ConsumerStatefulWidget {
   ConsumerState<ScannerScreen> createState() => _ScannerScreenState();
 }
 
-class _ScannerScreenState extends ConsumerState<ScannerScreen> {
+class _ScannerScreenState extends ConsumerState<ScannerScreen>
+    with WidgetsBindingObserver {
   final _cameraService = CameraScanService();
   final _galleryService = GalleryScanService();
   bool _hasScanned = false;
@@ -51,10 +53,25 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkPermission();
       _updateWakelock();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _cameraService.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      if (ref.read(selectedTabIndexProvider) == 0 &&
+          ref.read(scannerProvider).hasCameraPermission &&
+          _scanMode == _ScanMode.live) {
+        _cameraService.resume();
+      }
+    }
   }
 
   Future<void> _checkPermission() async {
@@ -103,6 +120,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
     _galleryService.dispose();
     _cameraService.disposeController();
@@ -182,7 +200,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
         return;
       }
 
+      await _cameraService.pause();
+      if (!mounted) return;
       await context.push(AppRoutes.resultDetailPath(result.id));
+      if (mounted &&
+          ref.read(selectedTabIndexProvider) == 0 &&
+          _scanMode == _ScanMode.live) {
+        await _cameraService.resume();
+      }
     } catch (error, stackTrace) {
       SecureLogger.logError(error, stackTrace);
       if (mounted) {
@@ -334,7 +359,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     if (_hasScanned ||
         _shouldIgnoreScan() ||
         _isGalleryScanning ||
-        _scanMode != _ScanMode.live) {
+        _scanMode != _ScanMode.live ||
+        ref.read(selectedTabIndexProvider) != 0) {
       return;
     }
     for (final barcode in capture.barcodes) {
@@ -413,6 +439,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     ref.listen(settingsProvider, (_, __) => _updateWakelock());
+    ref.listen(selectedTabIndexProvider, (prev, next) {
+      if (next != 0) {
+        _cameraService.pause();
+      } else if (_scanMode == _ScanMode.live &&
+          ref.read(scannerProvider).hasCameraPermission) {
+        _cameraService.resume();
+      }
+    });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,

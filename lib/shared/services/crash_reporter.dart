@@ -27,11 +27,12 @@ class CrashLogEntry {
 
   factory CrashLogEntry.fromMap(Map<dynamic, dynamic> map) {
     return CrashLogEntry(
-      id: map['id'] as String,
-      timestamp: DateTime.parse(map['timestamp'] as String),
-      message: map['message'] as String,
-      stackTrace: map['stackTrace'] as String,
-      context: map['context'] as String?,
+      id: map['id']?.toString() ?? '',
+      timestamp: DateTime.tryParse(map['timestamp']?.toString() ?? '') ??
+          DateTime.now(),
+      message: map['message']?.toString() ?? '',
+      stackTrace: map['stackTrace']?.toString() ?? '',
+      context: map['context']?.toString(),
     );
   }
 
@@ -94,11 +95,16 @@ class CrashReporter {
   }
 
   static List<CrashLogEntry> getLogs() {
-    if (!_initialized && !Hive.isBoxOpen(_boxName)) return [];
-    return _box.values
-        .map((value) => CrashLogEntry.fromMap(Map<dynamic, dynamic>.from(value as Map)))
-        .toList()
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    if (!Hive.isBoxOpen(_boxName)) return [];
+    try {
+      return _box.values
+          .whereType<Map>()
+          .map((value) => CrashLogEntry.fromMap(value))
+          .toList()
+        ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    } catch (_) {
+      return [];
+    }
   }
 
   static Future<void> clearLogs() async {

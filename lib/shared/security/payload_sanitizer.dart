@@ -51,7 +51,9 @@ class PayloadSanitizer {
       );
     }
 
-    if (_looksLikeUrl(lower) || lower.contains('://')) {
+    final isSingleUrl = _looksLikeUrl(lower) ||
+        (!value.contains('\n') && !value.contains(' ') && lower.contains('://'));
+    if (isSingleUrl) {
       final urlCheck = sanitizeUrl(value);
       if (urlCheck.isBlocked) return urlCheck;
       return SanitizedPayload(value: urlCheck.value);

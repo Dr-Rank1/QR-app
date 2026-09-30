@@ -33,9 +33,12 @@
   @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# Start.io
--keep class com.startapp.** { *; }
--dontwarn com.startapp.**
+# Unity Ads
+-keep class com.unity3d.ads.** { *; }
+-keep class com.unity3d.services.** { *; }
+-dontwarn com.unity3d.ads.**
+-dontwarn com.unity3d.services.**
+
 -assumenosideeffects class android.util.Log {
   public static *** d(...);
   public static *** v(...);

@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/app_spacing.dart';
-import '../../../../app/navigation_provider.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../domain/enums/qr_result_type.dart';
 import '../../domain/models/qr_result.dart';
@@ -64,7 +63,6 @@ class ResultDetailScreen extends ConsumerWidget {
 Future<void> _exitResultScreen(BuildContext context, WidgetRef ref) async {
   await ref.read(adsServiceProvider).maybeShowInterstitialOnResultExit();
   if (!context.mounted) return;
-  ref.read(selectedTabIndexProvider.notifier).state = 0;
   context.pop();
 }
 
@@ -87,7 +85,7 @@ class _ResultDetailContent extends ConsumerWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(AppIcons.close),
-          tooltip: 'Back to Scanner',
+          tooltip: 'Close',
           onPressed: () => unawaited(_exitResultScreen(context, ref)),
         ),
         title: Text(

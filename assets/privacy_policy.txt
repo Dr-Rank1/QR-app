@@ -17,9 +17,9 @@ QR Studio respects your privacy. Here's what we collect:
 - Camera frames are processed locally and discarded immediately.
 
 ### Advertising
-- This app displays ads through **Start.io** (StartApp).
-- Start.io may collect device identifiers, IP address, ad interaction data, and similar technical data to serve and measure ads.
-- You can learn more at [Start.io Privacy Policy](https://www.start.io/policy/).
+- This app displays ads through **Unity Ads** (Unity Technologies).
+- Unity Ads may collect device identifiers, IP address, ad interaction data, and similar technical data to serve and measure ads.
+- You can learn more at [Unity Privacy Policy](https://unity.com/legal/privacy-policy).
 
 ## Data Usage
 
@@ -31,7 +31,7 @@ We use collected data to:
 ## Data Sharing
 
 - Scan history and generated QR content stay on your device unless you export or share them.
-- Advertising data may be shared with Start.io and its ad partners to deliver ads.
+- Advertising data may be shared with Unity Ads and its ad partners to deliver ads.
 
 ## Your Rights
 

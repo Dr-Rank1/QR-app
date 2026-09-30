@@ -180,9 +180,7 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
       await AppHaptics.success();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not share image: $e')),
-        );
+        AppSnackBar.showError(context, 'Could not share image');
       }
     }
   }
@@ -510,28 +508,6 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: hasQrCode ? () async {
-                      final pngBytes = await _qrService.renderQrPng(
-                        payload,
-                        options: _renderOptions.copyWith(
-                          foregroundColor: _foregroundColor,
-                          backgroundColor: _backgroundColor,
-                        ),
-                      );
-                      final shareService = ref.read(shareServiceProvider);
-                      await shareService.shareQrImage(pngBytes);
-                      await _persistGenerated(payload);
-                      await AppHaptics.success();
-                      if (!context.mounted) return;
-                      AppSnackBar.showSuccess(context, 'Saved to My QRs');
-                    } : null,
-                    child: const Text('SAVE PNG'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
                     onPressed: hasQrCode ? () => _shareImage(payload) : null,
                     child: const Text('SHARE PNG'),
                   ),
@@ -541,7 +517,7 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: hasQrCode ? () => _shareSvgWithReward(payload) : null,
-                    child: const Text('SAVE SVG'),
+                    child: const Text('EXPORT SVG'),
                   ),
                 ),
                 const SizedBox(height: 12),

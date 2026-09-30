@@ -152,14 +152,26 @@ class QRContentParser {
 
   static Map<String, String>? _parseVcard(String value) {
     final metadata = <String, String>{};
-    for (final line in value.split('\n')) {
-      if (line.startsWith('FN:')) metadata['name'] = line.substring(3).trim();
-      if (line.startsWith('TEL')) {
-        final tel = line.split(':').last.trim();
-        metadata['phone'] = tel;
-      }
-      if (line.startsWith('EMAIL')) {
-        metadata['email'] = line.split(':').last.trim();
+    for (final rawLine in value.split('\n')) {
+      final line = rawLine.trim();
+      final upper = line.toUpperCase();
+      if (upper.startsWith('FN:')) {
+        metadata['name'] = line.substring(3).trim();
+      } else if (upper.startsWith('N:') && !metadata.containsKey('name')) {
+        final parts = line.substring(2).split(';').where((s) => s.trim().isNotEmpty).toList();
+        if (parts.isNotEmpty) {
+          metadata['name'] = parts.reversed.join(' ').trim();
+        }
+      } else if (upper.startsWith('TEL')) {
+        final colonIdx = line.indexOf(':');
+        if (colonIdx != -1) {
+          metadata['phone'] = line.substring(colonIdx + 1).trim();
+        }
+      } else if (upper.startsWith('EMAIL')) {
+        final colonIdx = line.indexOf(':');
+        if (colonIdx != -1) {
+          metadata['email'] = line.substring(colonIdx + 1).trim();
+        }
       }
     }
     return metadata.isEmpty ? null : metadata;
@@ -167,10 +179,19 @@ class QRContentParser {
 
   static Map<String, String>? _parseCalendar(String value) {
     final metadata = <String, String>{};
-    for (final line in value.split('\n')) {
-      if (line.startsWith('SUMMARY:')) metadata['title'] = line.substring(8).trim();
-      if (line.startsWith('DTSTART')) metadata['start'] = line.split(':').last.trim();
-      if (line.startsWith('LOCATION:')) metadata['location'] = line.substring(9).trim();
+    for (final rawLine in value.split('\n')) {
+      final line = rawLine.trim();
+      final upper = line.toUpperCase();
+      if (upper.startsWith('SUMMARY:')) {
+        metadata['title'] = line.substring(8).trim();
+      } else if (upper.startsWith('DTSTART')) {
+        final colonIdx = line.indexOf(':');
+        if (colonIdx != -1) {
+          metadata['start'] = line.substring(colonIdx + 1).trim();
+        }
+      } else if (upper.startsWith('LOCATION:')) {
+        metadata['location'] = line.substring(9).trim();
+      }
     }
     return metadata.isEmpty ? null : metadata;
   }
@@ -199,65 +220,69 @@ class QRContentParser {
     Map<String, String>? metadata, {
     BuildContext? context,
   }) async {
-    switch (type) {
-      case QRResultType.url:
-        final sanitized = PayloadSanitizer.sanitizeUrl(value);
-        if (sanitized.isBlocked) return false;
-        if (context != null) {
-          final confirmed = await UrlSafety.confirmOpen(context, sanitized.value);
-          if (!confirmed) return false;
-        }
-        return launchUrl(
-          Uri.parse(sanitized.value),
-          mode: LaunchMode.externalApplication,
-        );
-
-      case QRResultType.phone:
-        final phone = value.replaceAll(RegExp(r'[^\d+]'), '');
-        return launchUrl(Uri(scheme: 'tel', path: phone));
-
-      case QRResultType.email:
-        return launchUrl(Uri(
-          scheme: 'mailto',
-          path: value.replaceAll('mailto:', ''),
-        ));
-
-      case QRResultType.sms:
-        final number = metadata?['number'] ?? value.replaceAll(RegExp(r'^sms(to)?:', caseSensitive: false), '');
-        final body = metadata?['body'];
-        final uri = body != null
-            ? Uri(scheme: 'sms', path: number, queryParameters: {'body': body})
-            : Uri(scheme: 'sms', path: number);
-        return launchUrl(uri);
-
-      case QRResultType.geo:
-        if (metadata?['lat'] != null && metadata?['lng'] != null) {
-          return launchUrl(
-            Uri.parse('geo:${metadata!['lat']},${metadata['lng']}'),
-          );
-        }
-        if (metadata?['url'] != null) {
-          final query = Uri.encodeComponent(metadata!['url']!);
-          return launchUrl(
-            Uri.parse('https://maps.google.com/maps?q=$query'),
+    try {
+      switch (type) {
+        case QRResultType.url:
+          final sanitized = PayloadSanitizer.sanitizeUrl(value);
+          if (sanitized.isBlocked) return false;
+          if (context != null) {
+            final confirmed = await UrlSafety.confirmOpen(context, sanitized.value);
+            if (!confirmed) return false;
+          }
+          return await launchUrl(
+            Uri.parse(sanitized.value),
             mode: LaunchMode.externalApplication,
           );
-        }
-        if (value.toLowerCase().startsWith('geo:')) {
-          return launchUrl(Uri.parse(value));
-        }
-        return launchUrl(
-          Uri.parse(
-            'https://maps.google.com/maps?q=${Uri.encodeComponent(value)}',
-          ),
-          mode: LaunchMode.externalApplication,
-        );
 
-      case QRResultType.wifi:
-      case QRResultType.vcard:
-      case QRResultType.calendar:
-      case QRResultType.text:
-        return false;
+        case QRResultType.phone:
+          final phone = value.replaceAll(RegExp(r'[^\d+]'), '');
+          return await launchUrl(Uri(scheme: 'tel', path: phone));
+
+        case QRResultType.email:
+          return await launchUrl(Uri(
+            scheme: 'mailto',
+            path: value.replaceAll('mailto:', ''),
+          ));
+
+        case QRResultType.sms:
+          final number = metadata?['number'] ?? value.replaceAll(RegExp(r'^sms(to)?:', caseSensitive: false), '');
+          final body = metadata?['body'];
+          final uri = body != null
+              ? Uri(scheme: 'sms', path: number, queryParameters: {'body': body})
+              : Uri(scheme: 'sms', path: number);
+          return await launchUrl(uri);
+
+        case QRResultType.geo:
+          if (metadata?['lat'] != null && metadata?['lng'] != null) {
+            return await launchUrl(
+              Uri.parse('geo:${metadata!['lat']},${metadata['lng']}'),
+            );
+          }
+          if (metadata?['url'] != null) {
+            final query = Uri.encodeComponent(metadata!['url']!);
+            return await launchUrl(
+              Uri.parse('https://maps.google.com/maps?q=$query'),
+              mode: LaunchMode.externalApplication,
+            );
+          }
+          if (value.toLowerCase().startsWith('geo:')) {
+            return await launchUrl(Uri.parse(value));
+          }
+          return await launchUrl(
+            Uri.parse(
+              'https://maps.google.com/maps?q=${Uri.encodeComponent(value)}',
+            ),
+            mode: LaunchMode.externalApplication,
+          );
+
+        case QRResultType.wifi:
+        case QRResultType.vcard:
+        case QRResultType.calendar:
+        case QRResultType.text:
+          return false;
+      }
+    } catch (_) {
+      return false;
     }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../scanner/domain/enums/qr_result_type.dart';
@@ -108,25 +110,14 @@ class ScanHistoryRepository {
 
   Future<String> exportAsJson() async {
     final scans = await getAllScans();
-    final buffer = StringBuffer('[\n');
-    for (var i = 0; i < scans.length; i++) {
-      final scan = scans[i];
-      buffer.writeln('  {');
-      buffer.writeln('    "id": "${scan.id}",');
-      buffer.writeln('    "rawValue": ${_escapeJson(scan.rawValue)},');
-      buffer.writeln('    "type": "${scan.type.displayName}",');
-      buffer.writeln('    "scannedAt": "${scan.scannedAt.toIso8601String()}",');
-      buffer.writeln('    "isFavorite": ${scan.isFavorite}');
-      buffer.write('  }');
-      if (i < scans.length - 1) buffer.write(',');
-      buffer.writeln();
-    }
-    buffer.write(']');
-    return buffer.toString();
-  }
-
-  String _escapeJson(String value) {
-    return '"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\n', '\\n')}"';
+    final data = scans.map((scan) => {
+      'id': scan.id,
+      'rawValue': scan.rawValue,
+      'type': scan.type.displayName,
+      'scannedAt': scan.scannedAt.toIso8601String(),
+      'isFavorite': scan.isFavorite,
+    }).toList();
+    return const JsonEncoder.withIndent('  ').convert(data);
   }
 
   Stream<List<QRResult>> watchScans() async* {

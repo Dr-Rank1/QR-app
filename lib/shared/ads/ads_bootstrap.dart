@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'ads_provider.dart';
 
-/// Initializes Start.io once when the app boots.
+/// Initializes Unity Ads once when the app boots.
 class AdsBootstrap extends ConsumerStatefulWidget {
   final Widget child;
 

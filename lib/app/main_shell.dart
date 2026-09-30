@@ -9,8 +9,7 @@ import '../features/history/presentation/providers/history_provider.dart';
 import '../features/history/presentation/screens/enhanced_history_screen.dart';
 import '../features/scanner/presentation/screens/scanner_screen.dart';
 import '../shared/widgets/tab_crossfade_stack.dart';
-import '../shared/ads/ads_constants.dart';
-import '../shared/ads/startapp_banner_slot.dart';
+import '../shared/ads/unity_banner_slot.dart';
 import 'navigation_provider.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -76,14 +75,8 @@ class MainShell extends ConsumerWidget {
               children: _screens,
             ),
           ),
-          StartAppBannerSlot(
+          UnityBannerSlot(
             visible: selectedIndex > 0,
-            adTag: switch (selectedIndex) {
-              1 => AdsConstants.bannerGenerator,
-              2 => AdsConstants.bannerHistory,
-              3 => AdsConstants.bannerMyQrs,
-              _ => AdsConstants.bannerGenerator,
-            },
           ),
         ],
       ),

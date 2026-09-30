@@ -6,8 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../app/app_spacing.dart';
 import '../../../../app/app_info.dart';
 import '../../../../app/theme.dart';
-import '../../../../shared/ads/ads_constants.dart';
-import '../../../../shared/ads/startapp_banner_slot.dart';
+import '../../../../shared/ads/unity_banner_slot.dart';
 import '../../../../shared/services/crash_reporter.dart';
 import '../../../../shared/services/service_providers.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
@@ -202,7 +201,7 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 32),
-          const StartAppBannerSlot(adTag: AdsConstants.bannerSettings),
+          const UnityBannerSlot(),
           const SizedBox(height: 16),
           _BrandFooter(),
           const SizedBox(height: 16),

@@ -93,20 +93,29 @@ class MyQrsScreen extends ConsumerWidget {
                       return _GeneratedQrTile(
                         item: item,
                         onShare: () async {
-                          final png = await ref
-                              .read(qrGenerationServiceProvider)
-                              .renderQrPng(
-                                item.payload,
-                                options: QrRenderOptions(
-                                  size: 280,
-                                  foregroundColor: item.fg,
-                                  backgroundColor: item.bg,
-                                ),
+                          try {
+                            final png = await ref
+                                .read(qrGenerationServiceProvider)
+                                .renderQrPng(
+                                  item.payload,
+                                  options: QrRenderOptions(
+                                    size: 280,
+                                    foregroundColor: item.fg,
+                                    backgroundColor: item.bg,
+                                  ),
+                                );
+                            await ref
+                                .read(shareServiceProvider)
+                                .shareQrImage(png);
+                            await AppHaptics.success();
+                          } catch (_) {
+                            if (context.mounted) {
+                              AppSnackBar.showError(
+                                context,
+                                'Could not share QR image',
                               );
-                          await ref
-                              .read(shareServiceProvider)
-                              .shareQrImage(png);
-                          await AppHaptics.success();
+                            }
+                          }
                         },
                         onDelete: () async {
                           await ref

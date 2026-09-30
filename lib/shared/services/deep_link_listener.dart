@@ -33,16 +33,31 @@ class _DeepLinkListenerState extends ConsumerState<DeepLinkListener> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final initialUri = await _appLinks.getInitialLink();
-      if (initialUri != null) {
-        await _handleUri(initialUri);
-      }
-      _linkSubscription = _appLinks.uriLinkStream.listen(_handleUri);
+      try {
+        final initialUri = await _appLinks.getInitialLink();
+        if (initialUri != null) {
+          await _handleUri(initialUri);
+        }
+      } catch (_) {}
+      _linkSubscription = _appLinks.uriLinkStream.listen(
+        _handleUri,
+        onError: (_) {},
+      );
 
-      final initialMedia = await ReceiveSharingIntent.instance.getInitialMedia();
-      await _handleSharedMedia(initialMedia);
-      _sharedMediaSubscription =
-          ReceiveSharingIntent.instance.getMediaStream().listen(_handleSharedMedia);
+      try {
+        final initialMedia =
+            await ReceiveSharingIntent.instance.getInitialMedia();
+        if (initialMedia.isNotEmpty) {
+          await _handleSharedMedia(initialMedia);
+          ReceiveSharingIntent.instance.reset();
+        }
+      } catch (_) {}
+      _sharedMediaSubscription = ReceiveSharingIntent.instance
+          .getMediaStream()
+          .listen((media) {
+        _handleSharedMedia(media);
+        ReceiveSharingIntent.instance.reset();
+      }, onError: (_) {});
     });
   }
 
