@@ -60,10 +60,19 @@ class ResultDetailScreen extends ConsumerWidget {
   }
 }
 
+bool _isExitingResultScreen = false;
+
 Future<void> _exitResultScreen(BuildContext context, WidgetRef ref) async {
-  await ref.read(adsServiceProvider).maybeShowInterstitialOnResultExit();
-  if (!context.mounted) return;
-  context.pop();
+  if (_isExitingResultScreen) return;
+  _isExitingResultScreen = true;
+  try {
+    await ref.read(adsServiceProvider).maybeShowInterstitialOnResultExit();
+  } finally {
+    if (context.mounted) {
+      context.pop();
+    }
+    _isExitingResultScreen = false;
+  }
 }
 
 class _ResultDetailContent extends ConsumerWidget {

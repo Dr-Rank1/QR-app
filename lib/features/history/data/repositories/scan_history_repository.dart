@@ -20,17 +20,18 @@ class ScanHistoryRepository {
   static const int _pageSize = 20;
 
   late Box<QRResult> _box;
-  bool _isInitialized = false;
+  Future<void>? _initFuture;
 
-  Future<void> initialize() async {
-    if (_isInitialized) return;
+  Future<void> initialize() {
+    return _initFuture ??= _doInitialize();
+  }
 
+  Future<void> _doInitialize() async {
     if (!Hive.isAdapterRegistered(0)) {
       Hive.registerAdapter(QRResultAdapter());
     }
 
     _box = await Hive.openBox<QRResult>(_boxName);
-    _isInitialized = true;
     await _trimOldScans();
   }
 
