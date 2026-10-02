@@ -1,8 +1,6 @@
-# QR Vault - ProGuard / R8 rules (release)
+# ProGuard / R8 rules (release)
+-dontobfuscate
 
--allowaccessmodification
--repackageclasses 'qrvault'
--optimizationpasses 5
 
 # Flutter
 -keep class io.flutter.app.** { *; }
