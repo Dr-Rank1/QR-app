@@ -19,6 +19,7 @@ class AdsService {
 
   DateTime? _lastInterstitialAt;
   int _resultExitCount = 0;
+  int _generatorActionCount = 0;
 
   bool get isInitialized => _initialized;
 
@@ -140,21 +141,7 @@ class AdsService {
     }
   }
 
-  Future<void> maybeShowInterstitialOnResultExit() async {
-    if (!isSupportedPlatform) return;
-
-    _resultExitCount++;
-    if (_resultExitCount % AdsConstants.interstitialEveryNthResultExit != 0) {
-      return;
-    }
-
-    final lastShown = _lastInterstitialAt;
-    if (lastShown != null &&
-        DateTime.now().difference(lastShown) <
-            AdsConstants.interstitialCooldown) {
-      return;
-    }
-
+  Future<void> _showInterstitial() async {
     final placementId = AdsConstants.interstitialPlacementId;
     if (placementId.isEmpty) return;
 
@@ -193,6 +180,44 @@ class AdsService {
     } finally {
       unawaited(_preloadInterstitial());
     }
+  }
+
+  Future<void> maybeShowInterstitialOnResultExit() async {
+    if (!isSupportedPlatform) return;
+
+    _resultExitCount++;
+    if (_resultExitCount % AdsConstants.interstitialEveryNthResultExit != 0) {
+      return;
+    }
+
+    final lastShown = _lastInterstitialAt;
+    if (lastShown != null &&
+        DateTime.now().difference(lastShown) <
+            AdsConstants.interstitialCooldown) {
+      return;
+    }
+
+    await _showInterstitial();
+  }
+
+  Future<void> maybeShowInterstitialOnGeneratorAction() async {
+    if (!isSupportedPlatform) return;
+
+    _generatorActionCount++;
+    if (_generatorActionCount %
+            AdsConstants.interstitialEveryNthGeneratorAction !=
+        0) {
+      return;
+    }
+
+    final lastShown = _lastInterstitialAt;
+    if (lastShown != null &&
+        DateTime.now().difference(lastShown) <
+            AdsConstants.interstitialCooldown) {
+      return;
+    }
+
+    await _showInterstitial();
   }
 
   Future<bool> requestReward(RewardedFeature feature) async {
@@ -260,5 +285,7 @@ class AdsService {
     _interstitialLoading = false;
     _rewardedLoaded = false;
     _rewardedLoading = false;
+    _resultExitCount = 0;
+    _generatorActionCount = 0;
   }
 }

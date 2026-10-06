@@ -11,6 +11,7 @@ import '../../../history/presentation/providers/history_provider.dart';
 import '../../domain/enums/qr_result_type.dart';
 import '../../domain/models/qr_result.dart';
 import '../../../../shared/ads/ads_provider.dart';
+import '../../../../shared/ads/unity_banner_slot.dart';
 import '../../../../shared/utils/qr_content_actions.dart';
 import '../../../../shared/utils/qr_parser.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
@@ -168,6 +169,7 @@ class _ResultDetailContent extends ConsumerWidget {
           ],
         ),
       ),
+      bottomNavigationBar: const UnityBannerSlot(),
     ),
     );
   }

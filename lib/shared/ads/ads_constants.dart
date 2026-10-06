@@ -38,8 +38,9 @@ class AdsConstants {
     return '';
   }
 
-  static const Duration interstitialCooldown = Duration(minutes: 3);
-  static const int interstitialEveryNthResultExit = 3;
+  static const Duration interstitialCooldown = Duration(seconds: 45);
+  static const int interstitialEveryNthResultExit = 2;
+  static const int interstitialEveryNthGeneratorAction = 2;
 
   // Placement getters and aliases
   static String get bannerPlacement => bannerPlacementId;
@@ -50,7 +51,9 @@ class AdsConstants {
   static String get bannerHistory => bannerPlacementId;
   static String get bannerMyQrs => bannerPlacementId;
   static String get bannerSettings => bannerPlacementId;
+  static String get bannerResultDetail => bannerPlacementId;
   static String get interstitialResultExit => interstitialPlacementId;
+  static String get interstitialGeneratorAction => interstitialPlacementId;
   static String get rewardedSvgExport => rewardedPlacementId;
   static String get rewardedLogoEmbed => rewardedPlacementId;
   static String get rewardedUrlShortener => rewardedPlacementId;

@@ -14,8 +14,12 @@ void main() {
     });
 
     test('cooldown and frequency thresholds are properly set', () {
-      expect(AdsConstants.interstitialCooldown, equals(const Duration(minutes: 3)));
-      expect(AdsConstants.interstitialEveryNthResultExit, equals(3));
+      expect(
+        AdsConstants.interstitialCooldown,
+        equals(const Duration(seconds: 45)),
+      );
+      expect(AdsConstants.interstitialEveryNthResultExit, equals(2));
+      expect(AdsConstants.interstitialEveryNthGeneratorAction, equals(2));
     });
 
     test('premium template names set is populated', () {
@@ -35,6 +39,7 @@ void main() {
 
       // Verify safe calls that should not throw
       await service.maybeShowInterstitialOnResultExit();
+      await service.maybeShowInterstitialOnGeneratorAction();
       final rewardResult = await service.requestReward(RewardedFeature.svgExport);
       expect(rewardResult, isFalse); // Non-mobile / no ad server returns false cleanly
 

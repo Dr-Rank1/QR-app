@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../app/app_spacing.dart';
 import '../../../../app/theme.dart';
+import '../../../../shared/ads/ads_provider.dart';
 import '../../../../shared/services/service_providers.dart';
 import '../../../../shared/utils/app_haptics.dart';
 import '../../../../shared/widgets/app_icons.dart';
@@ -108,6 +111,13 @@ class MyQrsScreen extends ConsumerWidget {
                                 .read(shareServiceProvider)
                                 .shareQrImage(png);
                             await AppHaptics.success();
+                            if (context.mounted) {
+                              unawaited(
+                                ref
+                                    .read(adsServiceProvider)
+                                    .maybeShowInterstitialOnGeneratorAction(),
+                              );
+                            }
                           } catch (_) {
                             if (context.mounted) {
                               AppSnackBar.showError(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../app/app_spacing.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme.dart';
+import '../../../../shared/ads/ads_provider.dart';
 import '../../../../shared/utils/app_haptics.dart';
 import '../../../../shared/utils/qr_parser.dart';
 import '../../../../shared/utils/qr_type_ui.dart';
@@ -47,6 +50,13 @@ class _EnhancedHistoryScreenState extends ConsumerState<EnhancedHistoryScreen> {
     await SharePlus.instance.share(
       ShareParams(text: json, subject: 'QR Vault Export'),
     );
+    if (mounted) {
+      unawaited(
+        ref
+            .read(adsServiceProvider)
+            .maybeShowInterstitialOnGeneratorAction(),
+      );
+    }
   }
 
   @override

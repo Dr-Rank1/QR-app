@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:screenshot/screenshot.dart';
 import '../../../../app/app_spacing.dart';
 import '../../../../app/theme.dart';
 import '../../../../shared/ads/ads_constants.dart';
+import '../../../../shared/ads/ads_provider.dart';
 import '../../../../shared/ads/ads_reward_dialog.dart';
 import '../../../../shared/services/service_providers.dart';
 import '../../../../shared/utils/app_haptics.dart';
@@ -178,6 +180,13 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
       await shareService.shareQrImage(pngBytes);
       await _persistGenerated(payload);
       await AppHaptics.success();
+      if (mounted) {
+        unawaited(
+          ref
+              .read(adsServiceProvider)
+              .maybeShowInterstitialOnGeneratorAction(),
+        );
+      }
     } catch (e) {
       if (mounted) {
         AppSnackBar.showError(context, 'Could not share image');
@@ -532,6 +541,11 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                             AppSnackBar.showSuccess(
                               context,
                               'Saved to My QRs',
+                            );
+                            unawaited(
+                              ref
+                                  .read(adsServiceProvider)
+                                  .maybeShowInterstitialOnGeneratorAction(),
                             );
                           }
                         : null,
